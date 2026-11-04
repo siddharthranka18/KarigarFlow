@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import datetime
 
 class TransactionCreate(BaseModel):
-    transaction_type: str  # ISSUE, RECEIPT_ORNAMENT, RECEIPT_SCRAP, RECEIPT_DUST, PURCHASE
+    transaction_type: str  # ISSUE, RECEIPT_ORNAMENT, RECEIPT_SCRAP, RECEIPT_DUST, WASTAGE_SETTLEMENT, LOSS_ADJUSTMENT, PURCHASE
     karigar_id: Optional[int] = None
     item_description: str
     gross_weight: Decimal = Field(..., gt=0, decimal_places=3, description="Weight in grams to 3 decimal places")
@@ -15,11 +15,14 @@ class TransactionCreate(BaseModel):
     scale_reading_confirmed: bool = True
     scale_image_url: Optional[str] = None
     idempotency_key: Optional[str] = None
+    related_slip_number: Optional[str] = None
     notes: Optional[str] = None
 
 class TransactionResponse(BaseModel):
     id: int
     slip_number: str
+    idempotency_key: Optional[str] = None
+    related_slip_number: Optional[str] = None
     transaction_type: str
     karigar_id: Optional[int]
     created_by_user_id: Optional[int]
@@ -49,6 +52,7 @@ class DailyStockSummary(BaseModel):
     total_workshop_gold_fine: Decimal
     total_issues_today_gross: Decimal
     total_receipts_today_gross: Decimal
+    total_legitimate_wastage_today_gross: Decimal
+    total_legitimate_wastage_today_fine: Decimal
     total_wastage_today_gross: Decimal
     loss_alerts_count: int
-

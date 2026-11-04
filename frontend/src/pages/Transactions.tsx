@@ -103,6 +103,7 @@ export const Transactions: React.FC = () => {
       allowed_wastage_percent: parseFloat(allowedWastagePercent),
       actual_wastage_weight: parseFloat(actualWastageWeight),
       scale_reading_confirmed: scaleReadingConfirmed,
+      idempotency_key: crypto.randomUUID(),
       notes: notes.trim(),
     });
   };

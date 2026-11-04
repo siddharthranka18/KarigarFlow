@@ -33,11 +33,13 @@ export interface Karigar {
   loss_alerts_count: number;
 }
 
-export type TransactionType = 'ISSUE' | 'RECEIPT_ORNAMENT' | 'RECEIPT_SCRAP' | 'RECEIPT_DUST' | 'PURCHASE';
+export type TransactionType = 'ISSUE' | 'RECEIPT_ORNAMENT' | 'RECEIPT_SCRAP' | 'RECEIPT_DUST' | 'WASTAGE_SETTLEMENT' | 'LOSS_ADJUSTMENT' | 'PURCHASE';
 
 export interface GoldTransaction {
   id: number;
   slip_number: string;
+  idempotency_key?: string;
+  related_slip_number?: string;
   transaction_type: TransactionType;
   karigar_id?: number;
   created_by_user_id?: number;
@@ -66,6 +68,8 @@ export interface DailyStockSummary {
   total_workshop_gold_fine: string;
   total_issues_today_gross: string;
   total_receipts_today_gross: string;
+  total_legitimate_wastage_today_gross: string;
+  total_legitimate_wastage_today_fine: string;
   total_wastage_today_gross: string;
   loss_alerts_count: number;
 }

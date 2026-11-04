@@ -90,6 +90,8 @@ class ApiClient {
     actual_wastage_weight?: number | string;
     scale_reading_confirmed?: boolean;
     scale_image_url?: string;
+    idempotency_key?: string;
+    related_slip_number?: string;
     notes?: string;
   }): Promise<GoldTransaction> {
     return this.request('/transactions', {

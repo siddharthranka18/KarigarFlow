@@ -92,10 +92,11 @@ export const DailyStock: React.FC = () => {
         />
 
         <StatCard
-          title="3. Today's Workshop Wastage"
-          value={formatWeight(summary?.total_wastage_today_gross)}
-          subtitle="Filing dust, polishing recovery & bench loss"
-          badge={{ text: 'Settled', variant: 'default' }}
+          title="3. Legitimate Craft Wastage Settled"
+          value={formatWeight(summary?.total_legitimate_wastage_today_gross)}
+          fineGoldValue={formatWeight(summary?.total_legitimate_wastage_today_fine)}
+          subtitle="Auditable approved filing & craft burn loss"
+          badge={{ text: 'Audited', variant: 'default' }}
           icon={<Coins className="w-5 h-5 text-brass-600" />}
         />
       </div>

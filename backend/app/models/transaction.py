@@ -5,17 +5,21 @@ import enum
 from app.db.base import Base
 
 class TransactionType(str, enum.Enum):
-    ISSUE = "ISSUE"                      # Raw/alloy gold given to karigar for ornament making
-    RECEIPT_ORNAMENT = "RECEIPT_ORNAMENT"# Finished jewellery returned by karigar
-    RECEIPT_SCRAP = "RECEIPT_SCRAP"      # Cuttings/remnants returned by karigar
-    RECEIPT_DUST = "RECEIPT_DUST"        # Recovered filing/polishing dust
-    PURCHASE = "PURCHASE"                # Bullion purchase added to workshop vault
+    ISSUE = "ISSUE"                            # Raw/alloy gold given to karigar for ornament making
+    RECEIPT_ORNAMENT = "RECEIPT_ORNAMENT"      # Finished jewellery returned by karigar
+    RECEIPT_SCRAP = "RECEIPT_SCRAP"            # Cuttings/remnants returned by karigar
+    RECEIPT_DUST = "RECEIPT_DUST"              # Recovered filing/polishing dust
+    WASTAGE_SETTLEMENT = "WASTAGE_SETTLEMENT"  # Legitimate approved craft wastage settled
+    LOSS_ADJUSTMENT = "LOSS_ADJUSTMENT"        # Excess wastage loss audit adjustment/recovery
+    PURCHASE = "PURCHASE"                      # Bullion purchase added to workshop vault
 
 class GoldTransaction(Base):
     __tablename__ = "gold_transactions"
 
     id = Column(Integer, primary_key=True, index=True)
     slip_number = Column(String(100), unique=True, index=True, nullable=False)
+    idempotency_key = Column(String(100), unique=True, index=True, nullable=True)
+    related_slip_number = Column(String(100), nullable=True, index=True)
     transaction_type = Column(String(50), nullable=False)
     
     karigar_id = Column(Integer, ForeignKey("karigars.id"), nullable=True, index=True)
@@ -53,4 +57,3 @@ class GoldTransaction(Base):
 
     def __repr__(self):
         return f"<GoldTransaction {self.slip_number} {self.transaction_type} {self.gross_weight}g>"
-

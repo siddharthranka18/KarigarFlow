@@ -82,14 +82,16 @@ def test_wastage_triggers_loss_alert():
 def test_jewellery_scrap_filings_receipts_settlement():
     # Opening balance: 0.000g
     # Job Issue: 100.000g 22K (91.600g fine)
-    # Receipt 1 (Finished Ornament): 85.000g gross (77.860g fine) + 1.800g actual wastage reported
+    # Receipt 1 (Finished Ornament): 85.000g gross (77.860g fine)
+    # Auditable Wastage Settlement: 1.800g gross (1.649g fine)
     # Receipt 2 (Melting Scrap): 10.000g gross (9.160g fine)
     # Receipt 3 (Polishing Dust): 1.200g gross (1.099g fine)
-    # Total accounted = 85.000 + 10.000 + 1.200 + 1.800 = 98.000g
+    # Total accounted = 85.000 + 1.800 + 10.000 + 1.200 = 98.000g
     # Remaining on karigar bench = 100.000 - 98.000 = 2.000g gross
     issued = [MockTx("100.000", "91.600", tx_type="ISSUE")]
     received = [
-        MockTx("85.000", "77.860", tx_type="RECEIPT_ORNAMENT", wastage="1.800"),
+        MockTx("85.000", "77.860", tx_type="RECEIPT_ORNAMENT"),
+        MockTx("1.800", "1.649", tx_type="WASTAGE_SETTLEMENT"),
         MockTx("10.000", "9.160", tx_type="RECEIPT_SCRAP"),
         MockTx("1.200", "1.099", tx_type="RECEIPT_DUST")
     ]

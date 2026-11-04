@@ -76,9 +76,10 @@ def test_finance_head_full_access(finance_token):
     assert client.get("/api/inventory", headers=headers).status_code == 200
     assert client.get("/api/transactions/daily-summary", headers=headers).status_code == 200
 
-# 7. Duplicate Submission Prevention (Idempotency Guard)
-def test_duplicate_submission_blocked(clerk_token):
+# 7. Duplicate Submission & Idempotency Key Handling
+def test_duplicate_submission_idempotent(clerk_token):
     headers = {"Authorization": f"Bearer {clerk_token}"}
+    idemp_key = "test-sec-idemp-101"
     payload = {
         "transaction_type": "ISSUE",
         "karigar_id": 3,
@@ -86,16 +87,18 @@ def test_duplicate_submission_blocked(clerk_token):
         "gross_weight": 14.250,
         "stone_weight": 0.000,
         "purity_percent": 91.60,
-        "allowed_wastage_percent": 2.00
+        "allowed_wastage_percent": 2.00,
+        "idempotency_key": idemp_key
     }
     # First submission -> 201 Created
     res1 = client.post("/api/transactions", json=payload, headers=headers)
     assert res1.status_code == 201
+    slip_number = res1.json()["slip_number"]
 
-    # Immediate second submission with identical params -> 409 Conflict
+    # Retried submission with identical idempotency_key -> returns existing transaction
     res2 = client.post("/api/transactions", json=payload, headers=headers)
-    assert res2.status_code == 409
-    assert "Duplicate submission detected" in res2.json()["detail"]
+    assert res2.status_code in [200, 201]
+    assert res2.json()["slip_number"] == slip_number
 
 # 8. Insufficient Balance Check on Receipt
 def test_receipt_exceeding_balance_blocked(clerk_token):

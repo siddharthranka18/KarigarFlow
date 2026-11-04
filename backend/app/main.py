@@ -3,6 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
 from decimal import Decimal
+import sys
+from pathlib import Path
+
+# Add project root to sys.path to access database/seed
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.core.config import settings
 from app.db.base import Base
@@ -11,20 +18,31 @@ from app.api.routes import health, auth, karigars, transactions, inventory
 from app.models.user import User, UserRole
 from app.models.karigar import Karigar
 from app.models.inventory import GoldInventory
+from app.models.transaction import GoldTransaction, TransactionType
 from app.core.security import get_password_hash
 from app.services.gold_calculations import calculate_fine_gold
+from database.seed.sample_data import (
+    CLIENT_BRIEF_SPECIFICATIONS,
+    SYNTHETIC_KARIGAR_PROFILES,
+    SYNTHETIC_VAULT_INVENTORY
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def seed_initial_data():
-    """Seeds baseline accounts and Coimbatore workshop demonstration data if not already present."""
+    """
+    Seeds baseline demonstration data with clear taxonomy:
+    1. Operational staff user accounts (Finance Head, Clerk, Manager, Craftsman).
+    2. CLIENT_REFERENCE_PROFILES: 4 core master craftsmen from Coimbatore problem statement.
+    3. ADDITIONAL_SYNTHETIC_KARIGARS: Additional craftsmen representing the 40 workshop artisans.
+    4. CLIENT_REFERENCE_VAULT_INVENTORY: Bullion ingots, alloy casting grains, and scrap.
+    """
     try:
         db = SessionLocal()
         try:
-            # Check if users already seeded
             if db.query(User).count() == 0:
-                logger.info("Seeding demonstration accounts...")
+                logger.info("Seeding demonstration user accounts...")
                 
                 # 1. Admin / Finance Head
                 admin_user = User(
@@ -66,81 +84,36 @@ def seed_initial_data():
                 db.commit()
                 db.refresh(karigar_user)
 
-                # Seed Karigars representing the Coimbatore workshop
-                sample_karigars = [
-                    Karigar(
-                        karigar_code="KG-CBE-001",
-                        name="Anand Swamy",
-                        phone="+91 98421 11201",
-                        specialization="Temple Jewellery & Chains",
-                        benchmark_wastage_percent=Decimal("2.20"),
-                        opening_balance_gross=Decimal("45.250"),
-                        opening_balance_fine=Decimal("41.449"),
-                        user_id=karigar_user.id
-                    ),
-                    Karigar(
-                        karigar_code="KG-CBE-002",
-                        name="P. Murugesan",
-                        phone="+91 98421 11202",
-                        specialization="Solid Bangles & Kadas",
-                        benchmark_wastage_percent=Decimal("1.80"),
-                        opening_balance_gross=Decimal("82.100"),
-                        opening_balance_fine=Decimal("75.204")
-                    ),
-                    Karigar(
-                        karigar_code="KG-CBE-003",
-                        name="D. Rajesh",
-                        phone="+91 98421 11203",
-                        specialization="Antique Choker & Casting",
-                        benchmark_wastage_percent=Decimal("2.50"),
-                        opening_balance_gross=Decimal("110.000"),
-                        opening_balance_fine=Decimal("100.760")
-                    ),
-                    Karigar(
-                        karigar_code="KG-CBE-004",
-                        name="G. Selvam",
-                        phone="+91 98421 11204",
-                        specialization="Stone Setting & Navratna",
-                        benchmark_wastage_percent=Decimal("2.00"),
-                        opening_balance_gross=Decimal("30.500"),
-                        opening_balance_fine=Decimal("27.938")
+                logger.info("Seeding SYNTHETIC_KARIGAR_PROFILES (representing Coimbatore workshop artisans)...")
+                for idx, p in enumerate(SYNTHETIC_KARIGAR_PROFILES):
+                    k = Karigar(
+                        karigar_code=p["karigar_code"],
+                        name=p["name"],
+                        phone=p["phone"],
+                        specialization=p["specialization"],
+                        benchmark_wastage_percent=p["benchmark_wastage_percent"],
+                        opening_balance_gross=p["opening_balance_gross"],
+                        opening_balance_fine=p["opening_balance_fine"],
+                        user_id=karigar_user.id if idx == 0 else None,
+                        is_active=True
                     )
-                ]
-                db.add_all(sample_karigars)
+                    db.add(k)
 
-                # Seed Workshop Vault Inventory
-                sample_inventory = [
-                    GoldInventory(
-                        lot_code="LOT-2026-RAW-01",
-                        category="24K Bullion Bar (999.0)",
-                        description="MMTC-PAMP 1000g Bullion Bar #A4892",
-                        gross_weight=Decimal("1000.000"),
-                        purity_percent=Decimal("99.90"),
-                        fine_weight=Decimal("999.000"),
-                        location="Coimbatore Central Strongroom Vault"
-                    ),
-                    GoldInventory(
-                        lot_code="LOT-2026-GRAIN-22K",
-                        category="22K Alloy Grains (916)",
-                        description="Workshop Ready Cast Grains 91.60% Hallmarked",
-                        gross_weight=Decimal("450.000"),
-                        purity_percent=Decimal("91.60"),
-                        fine_weight=calculate_fine_gold(Decimal("450.000"), Decimal("91.60")),
-                        location="Workshop Floor Dispense Safe #2"
-                    ),
-                    GoldInventory(
-                        lot_code="LOT-2026-SCRAP-MELT",
-                        category="Scrap for Refining",
-                        description="Recovered cuttings, wire ends, and old gold exchange scrap",
-                        gross_weight=Decimal("128.450"),
-                        purity_percent=Decimal("88.50"),
-                        fine_weight=calculate_fine_gold(Decimal("128.450"), Decimal("88.50")),
-                        location="Refinery Dispatch Tray"
+                logger.info("Seeding SYNTHETIC_VAULT_INVENTORY (bullion, casting grains, scrap)...")
+                for item in SYNTHETIC_VAULT_INVENTORY:
+                    inv = GoldInventory(
+                        lot_code=item["lot_code"],
+                        category=item["category"],
+                        description=item["description"],
+                        gross_weight=item["gross_weight"],
+                        purity_percent=item["purity_percent"],
+                        fine_weight=item["fine_weight"],
+                        location=item["location"]
                     )
-                ]
-                db.add_all(sample_inventory)
+                    db.add(inv)
+
                 db.commit()
-                logger.info("Successfully seeded KarigarFlow baseline data!")
+                logger.info("Successfully seeded KarigarFlow baseline data with clear reference/synthetic taxonomy!")
         finally:
             db.close()
     except Exception as e:
@@ -148,11 +121,9 @@ def seed_initial_data():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup actions
     logger.info("Initializing KarigarFlow backend database tables...")
     seed_initial_data()
     yield
-    # Shutdown actions
     logger.info("KarigarFlow backend shutting down...")
 
 app = FastAPI(
@@ -186,4 +157,3 @@ def root():
         "docs_url": "/docs",
         "health_check": "/api/health"
     }
-

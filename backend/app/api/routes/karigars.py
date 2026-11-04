@@ -24,7 +24,9 @@ def enrich_karigar_balance(karigar: Karigar, db: Session) -> KarigarWithBalance:
         GoldTransaction.transaction_type.in_([
             TransactionType.RECEIPT_ORNAMENT.value,
             TransactionType.RECEIPT_SCRAP.value,
-            TransactionType.RECEIPT_DUST.value
+            TransactionType.RECEIPT_DUST.value,
+            TransactionType.WASTAGE_SETTLEMENT.value,
+            TransactionType.LOSS_ADJUSTMENT.value
         ])
     ).all()
 

@@ -8,11 +8,13 @@ CRITICAL ENGINEERING RULES:
    - Purity: 2 decimal places (e.g., 91.60 for 22K 916 Hallmark, 75.00 for 18K).
    - Percentage: 2 decimal places.
 2. Clearly distinguish between Gross Weight (scale physical weight) and Fine Gold (pure 24K equivalent).
-3. Validate balance boundaries to prevent unaccounted negative physical balances.
+3. Auditable Double-Entry Rule:
+   Wastage is accounted for exclusively via explicit WASTAGE_SETTLEMENT transactions.
+   Never double-deduct wastage metadata from receipt slips.
 """
 
 from decimal import Decimal, ROUND_HALF_UP
-from typing import NamedTuple, Any, List
+from typing import NamedTuple, Any
 
 PRECISION_WEIGHT = Decimal("0.001")
 PRECISION_PURITY = Decimal("0.01")
@@ -114,6 +116,8 @@ class KarigarBalance(NamedTuple):
     total_returned_fine: Decimal
     total_wastage_settled_gross: Decimal
     total_wastage_settled_fine: Decimal
+    total_loss_adjusted_gross: Decimal
+    total_loss_adjusted_fine: Decimal
     closing_balance_gross: Decimal
     closing_balance_fine: Decimal
 
@@ -121,49 +125,67 @@ def compute_karigar_balance(
     opening_gross: Any,
     opening_fine: Any,
     issued_transactions: list,
-    received_transactions: list,
-    account_for_settled_wastage: bool = True
+    settled_transactions: list = None,
+    received_transactions: list = None
 ) -> KarigarBalance:
     """
-    Computes real-time gross and fine gold balances for a karigar.
-    Never hardcode balances: always compute from transactional entries.
+    Computes real-time gross and fine gold balances for a karigar from explicit transactions.
     
     Balance Mechanics:
-    - Gross Balance represents the physical gold weight (grams) held by the karigar.
-    - Fine Balance represents the pure 24K equivalent held.
-    - Issued gold INCREASES the karigar's balance.
-    - Received gold (ornaments, scrap, dust) DECREASES the karigar's balance.
-    - When a job receipt settles verified craft wastage, that wastage weight is also
-      relieved from the karigar's physical custody.
+    - Issued transactions (ISSUE) increase the karigar's bench custody (+).
+    - Physical returned transactions (RECEIPT_ORNAMENT, RECEIPT_SCRAP, RECEIPT_DUST) decrease custody (-).
+    - Legitimate settled wastage transactions (WASTAGE_SETTLEMENT) relieve custody (-).
+    - Excess wastage loss adjustments (LOSS_ADJUSTMENT) relieve custody (-).
+    - Each category is strictly aggregated from explicit ledger entries with zero double-counting.
     """
+    tx_list = settled_transactions if settled_transactions is not None else (received_transactions or [])
     issued_gross = sum((Decimal(str(getattr(tx, 'gross_weight', 0))) for tx in issued_transactions), ZERO_WEIGHT)
     issued_fine = sum((Decimal(str(getattr(tx, 'fine_weight', 0))) for tx in issued_transactions), ZERO_WEIGHT)
     
-    received_gross = sum((Decimal(str(getattr(tx, 'gross_weight', 0))) for tx in received_transactions), ZERO_WEIGHT)
-    received_fine = sum((Decimal(str(getattr(tx, 'fine_weight', 0))) for tx in received_transactions), ZERO_WEIGHT)
+    physical_types = {"RECEIPT_ORNAMENT", "RECEIPT_SCRAP", "RECEIPT_DUST"}
+    returned_gross = ZERO_WEIGHT
+    returned_fine = ZERO_WEIGHT
+    wastage_settled_gross = ZERO_WEIGHT
+    wastage_settled_fine = ZERO_WEIGHT
+    loss_adjusted_gross = ZERO_WEIGHT
+    loss_adjusted_fine = ZERO_WEIGHT
 
-    wastage_gross = ZERO_WEIGHT
-    wastage_fine = ZERO_WEIGHT
-    if account_for_settled_wastage:
-        for tx in received_transactions:
-            w_gross = Decimal(str(getattr(tx, 'actual_wastage_weight', 0) or 0))
-            if w_gross > ZERO_WEIGHT:
-                wastage_gross += w_gross
-                purity = Decimal(str(getattr(tx, 'purity_percent', 0) or 0))
-                wastage_fine += calculate_fine_gold(w_gross, purity)
+    for tx in tx_list:
+        tx_type = getattr(tx, 'transaction_type', '')
+        g_wt = Decimal(str(getattr(tx, 'gross_weight', 0) or 0))
+        f_wt = Decimal(str(getattr(tx, 'fine_weight', 0) or 0))
 
-    closing_gross = Decimal(str(opening_gross)) + issued_gross - received_gross - wastage_gross
-    closing_fine = Decimal(str(opening_fine)) + issued_fine - received_fine - wastage_fine
+        if tx_type in physical_types:
+            returned_gross += g_wt
+            returned_fine += f_wt
+        elif tx_type == "WASTAGE_SETTLEMENT":
+            wastage_settled_gross += g_wt
+            wastage_settled_fine += f_wt
+        elif tx_type == "LOSS_ADJUSTMENT":
+            loss_adjusted_gross += g_wt
+            loss_adjusted_fine += f_wt
+        else:
+            # Default fallback for untyped or legacy receipts
+            returned_gross += g_wt
+            returned_fine += f_wt
+
+    total_credits_gross = returned_gross + wastage_settled_gross + loss_adjusted_gross
+    total_credits_fine = returned_fine + wastage_settled_fine + loss_adjusted_fine
+
+    closing_gross = Decimal(str(opening_gross)) + issued_gross - total_credits_gross
+    closing_fine = Decimal(str(opening_fine)) + issued_fine - total_credits_fine
 
     return KarigarBalance(
         opening_balance_gross=round_weight(opening_gross),
         opening_balance_fine=round_weight(opening_fine),
         total_issued_gross=round_weight(issued_gross),
         total_issued_fine=round_weight(issued_fine),
-        total_returned_gross=round_weight(received_gross),
-        total_returned_fine=round_weight(received_fine),
-        total_wastage_settled_gross=round_weight(wastage_gross),
-        total_wastage_settled_fine=round_weight(wastage_fine),
+        total_returned_gross=round_weight(returned_gross),
+        total_returned_fine=round_weight(returned_fine),
+        total_wastage_settled_gross=round_weight(wastage_settled_gross),
+        total_wastage_settled_fine=round_weight(wastage_settled_fine),
+        total_loss_adjusted_gross=round_weight(loss_adjusted_gross),
+        total_loss_adjusted_fine=round_weight(loss_adjusted_fine),
         closing_balance_gross=round_weight(closing_gross),
         closing_balance_fine=round_weight(closing_fine)
     )
@@ -175,7 +197,7 @@ def validate_transaction_balance(
     allow_negative_override: bool = False
 ) -> None:
     """
-    Validates that a receipt transaction does not exceed the karigar's active physical gold balance.
+    Validates that a physical receipt transaction does not exceed the karigar's active physical gold balance.
     Prevents erroneous negative balance entries without explicit managerial override.
     """
     if transaction_type in ["RECEIPT_ORNAMENT", "RECEIPT_SCRAP", "RECEIPT_DUST"]:
