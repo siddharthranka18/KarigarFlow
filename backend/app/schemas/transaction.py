@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from decimal import Decimal
 from typing import Optional
 from datetime import datetime
@@ -14,6 +14,7 @@ class TransactionCreate(BaseModel):
     actual_wastage_weight: Optional[Decimal] = Field(default=Decimal("0.000"), ge=0)
     scale_reading_confirmed: bool = True
     scale_image_url: Optional[str] = None
+    idempotency_key: Optional[str] = None
     notes: Optional[str] = None
 
 class TransactionResponse(BaseModel):
@@ -37,8 +38,7 @@ class TransactionResponse(BaseModel):
     notes: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class DailyStockSummary(BaseModel):
     date: str

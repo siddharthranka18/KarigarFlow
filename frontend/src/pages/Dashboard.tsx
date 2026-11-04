@@ -8,9 +8,10 @@ import { AlertBanner } from '../components/ui/AlertBanner';
 import { Button } from '../components/ui/Button';
 import { formatWeight, formatPurity, formatDateTime } from '../utils/formatters';
 import { Coins, Vault, Users, AlertTriangle, ArrowUpRight, ArrowDownLeft, FilePlus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { data: summary } = useQuery({
     queryKey: ['daily-summary'],
     queryFn: () => api.getDailySummary(),
@@ -56,7 +57,7 @@ export const Dashboard: React.FC = () => {
           title="Gold Loss Alert Triggered"
           message={`${summary.loss_alerts_count} transaction(s) have exceeded the allowed workshop wastage tolerance threshold (0.100g). Immediate verification required.`}
           actionText="Review Loss Alerts"
-          onAction={() => (window.location.href = '/loss-alerts')}
+          onAction={() => navigate('/loss-alerts')}
         />
       )}
 

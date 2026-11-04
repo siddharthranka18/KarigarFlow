@@ -18,9 +18,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def seed_initial_data():
-    """Initializes schema and seeds baseline accounts and Coimbatore workshop demonstration data."""
+    """Seeds baseline accounts and Coimbatore workshop demonstration data if not already present."""
     try:
-        Base.metadata.create_all(bind=engine)
         db = SessionLocal()
         try:
             # Check if users already seeded

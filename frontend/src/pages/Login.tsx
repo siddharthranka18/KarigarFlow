@@ -116,50 +116,57 @@ export const Login: React.FC = () => {
             </Button>
           </form>
 
-          {/* Quick Demo Credentials Switcher */}
-          <div className="mt-6 pt-5 border-t border-parchment-200">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-charcoal-700 uppercase tracking-wider mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-brass-600" />
-              <span>Quick Role Demo Switcher</span>
+          {/* Quick Demo Credentials Switcher (Development & Assessment Mode Only) */}
+          {import.meta.env.DEV && (
+            <div className="mt-6 pt-5 border-t border-parchment-200">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-charcoal-700 uppercase tracking-wider">
+                  <Sparkles className="w-3.5 h-3.5 text-brass-600" />
+                  <span>Quick Demo Role Switcher</span>
+                </div>
+                <span className="text-[10px] font-mono text-status-warning bg-status-warning-bg border border-status-warning-border px-1.5 py-0.5 rounded-xs">
+                  Dev Mode
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleSelectDemoUser('finance@karigarflow.com', 'Finance@123')}
+                  className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50 hover:border-brass-300 transition-colors"
+                >
+                  <div className="font-semibold text-charcoal-900">Finance Head</div>
+                  <div className="text-[10px] text-charcoal-500 font-mono">finance@karigarflow.com</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectDemoUser('clerk@karigarflow.com', 'Clerk@123')}
+                  className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50 hover:border-brass-300 transition-colors"
+                >
+                  <div className="font-semibold text-charcoal-900">Issue Clerk</div>
+                  <div className="text-[10px] text-charcoal-500 font-mono">clerk@karigarflow.com</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectDemoUser('manager@karigarflow.com', 'Manager@123')}
+                  className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50 hover:border-brass-300 transition-colors"
+                >
+                  <div className="font-semibold text-charcoal-900">Workshop Master</div>
+                  <div className="text-[10px] text-charcoal-500 font-mono">manager@karigarflow.com</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectDemoUser('karigar1@karigarflow.com', 'Karigar@123')}
+                  className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50 hover:border-brass-300 transition-colors"
+                >
+                  <div className="font-semibold text-charcoal-900">Karigar (Craftsman)</div>
+                  <div className="text-[10px] text-charcoal-500 font-mono">karigar1@karigarflow.com</div>
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleSelectDemoUser('finance@karigarflow.com', 'Finance@123')}
-                className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50 hover:border-brass-300 transition-colors"
-              >
-                <div className="font-semibold text-charcoal-900">Finance Head</div>
-                <div className="text-[10px] text-charcoal-500 font-mono">finance@karigarflow.com</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectDemoUser('clerk@karigarflow.com', 'Clerk@123')}
-                className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50 hover:border-brass-300 transition-colors"
-              >
-                <div className="font-semibold text-charcoal-900">Issue Clerk</div>
-                <div className="text-[10px] text-charcoal-500 font-mono">clerk@karigarflow.com</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectDemoUser('manager@karigarflow.com', 'Manager@123')}
-                className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50 hover:border-brass-300 transition-colors"
-              >
-                <div className="font-semibold text-charcoal-900">Workshop Master</div>
-                <div className="text-[10px] text-charcoal-500 font-mono">manager@karigarflow.com</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectDemoUser('karigar1@karigarflow.com', 'Karigar@123')}
-                className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50 hover:border-brass-300 transition-colors"
-              >
-                <div className="font-semibold text-charcoal-900">Karigar (Craftsman)</div>
-                <div className="text-[10px] text-charcoal-500 font-mono">karigar1@karigarflow.com</div>
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Security & Workshop context footer */}

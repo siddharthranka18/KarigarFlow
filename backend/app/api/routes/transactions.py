@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 import uuid
 
@@ -17,6 +17,8 @@ from app.services.gold_calculations import (
     calculate_fine_gold,
     calculate_net_weight,
     calculate_wastage,
+    compute_karigar_balance,
+    validate_transaction_balance,
     round_weight
 )
 from app.core.config import settings
@@ -34,7 +36,7 @@ def list_transactions(
 ):
     query = db.query(GoldTransaction)
 
-    # Karigar role can only see their own transactions
+    # Karigar role can ONLY see their own transactions (Assumption 3)
     if current_user.role == UserRole.KARIGAR.value:
         karigar = db.query(Karigar).filter(Karigar.user_id == current_user.id).first()
         if not karigar:
@@ -62,36 +64,89 @@ def create_transaction(
         UserRole.ISSUE_CLERK.value
     ]))
 ):
-    # Validate karigar if transaction involves one
-    if payload.transaction_type in [TransactionType.ISSUE.value, TransactionType.RECEIPT_ORNAMENT.value, TransactionType.RECEIPT_SCRAP.value, TransactionType.RECEIPT_DUST.value]:
+    # 1. Validate Karigar
+    karigar = None
+    if payload.transaction_type in [
+        TransactionType.ISSUE.value,
+        TransactionType.RECEIPT_ORNAMENT.value,
+        TransactionType.RECEIPT_SCRAP.value,
+        TransactionType.RECEIPT_DUST.value
+    ]:
         if not payload.karigar_id:
             raise HTTPException(status_code=400, detail="karigar_id is required for issue/receipt slips")
         karigar = db.query(Karigar).filter(Karigar.id == payload.karigar_id).first()
         if not karigar:
             raise HTTPException(status_code=404, detail="Karigar not found")
 
-    # Safe decimal calculations
+    # 2. Duplicate submission prevention (Idempotency Guard)
+    recent_window = datetime.now(timezone.utc) - timedelta(seconds=10)
+    duplicate_query = db.query(GoldTransaction).filter(
+        GoldTransaction.karigar_id == payload.karigar_id,
+        GoldTransaction.transaction_type == payload.transaction_type,
+        GoldTransaction.gross_weight == payload.gross_weight,
+        GoldTransaction.item_description == payload.item_description,
+        GoldTransaction.created_at >= recent_window
+    ).first()
+    if duplicate_query:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Duplicate submission detected: Slip {duplicate_query.slip_number} with identical parameters was submitted moments ago."
+        )
+
+    # 3. Safe decimal calculations
     net_weight = calculate_net_weight(payload.gross_weight, payload.stone_weight)
     if net_weight <= Decimal("0.000"):
         raise HTTPException(status_code=400, detail="Net gold weight must be strictly greater than 0")
 
     fine_weight = calculate_fine_gold(net_weight, payload.purity_percent)
 
-    # Wastage and loss alert logic
+    # 4. Validate sufficient balance on receipts
+    if karigar and payload.transaction_type in [
+        TransactionType.RECEIPT_ORNAMENT.value,
+        TransactionType.RECEIPT_SCRAP.value,
+        TransactionType.RECEIPT_DUST.value
+    ]:
+        # Compute active live balance
+        issued_txs = db.query(GoldTransaction).filter(
+            GoldTransaction.karigar_id == karigar.id,
+            GoldTransaction.transaction_type == TransactionType.ISSUE.value
+        ).all()
+        received_txs = db.query(GoldTransaction).filter(
+            GoldTransaction.karigar_id == karigar.id,
+            GoldTransaction.transaction_type.in_([
+                TransactionType.RECEIPT_ORNAMENT.value,
+                TransactionType.RECEIPT_SCRAP.value,
+                TransactionType.RECEIPT_DUST.value
+            ])
+        ).all()
+        current_bal = compute_karigar_balance(
+            karigar.opening_balance_gross,
+            karigar.opening_balance_fine,
+            issued_txs,
+            received_txs
+        )
+        try:
+            validate_transaction_balance(
+                current_gross_balance=current_bal.closing_balance_gross,
+                transaction_type=payload.transaction_type,
+                transaction_gross_weight=payload.gross_weight
+            )
+        except ValueError as err:
+            raise HTTPException(status_code=400, detail=str(err))
+
+    # 5. Wastage and loss alert logic
     allowed_pct = payload.allowed_wastage_percent or Decimal("0.00")
     actual_wastage = payload.actual_wastage_weight or Decimal("0.000")
     
-    # Calculate allowed wastage weight based on gross weight
     allowed_wastage_weight = round_weight((payload.gross_weight * allowed_pct) / Decimal("100.00"))
     wastage_variance = round_weight(actual_wastage - allowed_wastage_weight)
 
     is_alert = False
     if payload.transaction_type == TransactionType.RECEIPT_ORNAMENT.value:
-        # Check against workshop loss alert threshold (default 0.100g)
         if wastage_variance > settings.LOSS_ALERT_THRESHOLD_GRAMS:
             is_alert = True
 
-    # Generate sequential unique slip code
+    # 6. Generate sequential unique slip code
     now = datetime.now(timezone.utc)
     date_str = now.strftime("%Y%m%d")
     short_uuid = str(uuid.uuid4())[:5].upper()
@@ -126,14 +181,16 @@ def create_transaction(
 @router.get("/daily-summary", response_model=DailyStockSummary)
 def get_daily_stock_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_roles([
+        UserRole.ADMIN.value,
+        UserRole.FINANCE_HEAD.value,
+        UserRole.WORKSHOP_MANAGER.value,
+        UserRole.ISSUE_CLERK.value
+    ]))
 ):
     """
-    Computes real-time Daily Gold Stock Statement:
-    - Vault inventory balance
-    - Outstanding gold balance with karigars
-    - Total fine gold in workshop
-    - Today's issues, receipts, wastage, and loss alerts
+    Computes real-time Daily Gold Stock Statement.
+    Protected endpoint: Karigars cannot view total company inventory (Assumption 3).
     """
     # 1. Vault gold from inventory
     vault_items = db.query(GoldInventory).all()
@@ -186,4 +243,3 @@ def get_daily_stock_summary(
         total_wastage_today_gross=round_weight(today_wastage_gross),
         loss_alerts_count=loss_alerts_count
     )
-

@@ -14,9 +14,17 @@ router = APIRouter(prefix="/inventory", tags=["Inventory"])
 @router.get("", response_model=List[InventoryItemResponse])
 def list_inventory(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_roles([
+        UserRole.ADMIN.value,
+        UserRole.FINANCE_HEAD.value,
+        UserRole.WORKSHOP_MANAGER.value,
+        UserRole.ISSUE_CLERK.value
+    ]))
 ):
-    """Lists current vault lots of bullion, alloys, and scrap."""
+    """
+    Lists current vault lots of bullion, alloys, and scrap.
+    Protected endpoint: Karigars cannot view company vault holdings (Assumption 3).
+    """
     return db.query(GoldInventory).order_by(GoldInventory.category, GoldInventory.lot_code).all()
 
 @router.post("", response_model=InventoryItemResponse, status_code=status.HTTP_201_CREATED)
@@ -44,4 +52,3 @@ def create_inventory_lot(
     db.commit()
     db.refresh(item)
     return item
-
