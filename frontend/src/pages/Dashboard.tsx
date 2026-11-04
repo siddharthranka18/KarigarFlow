@@ -1,117 +1,569 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
+import { useAuth } from '../features/auth/AuthContext';
 import { StatCard } from '../components/ui/StatCard';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/Table';
 import { Badge } from '../components/ui/Badge';
 import { AlertBanner } from '../components/ui/AlertBanner';
 import { Button } from '../components/ui/Button';
 import { formatWeight, formatPurity, formatDateTime } from '../utils/formatters';
-import { Coins, Vault, Users, AlertTriangle, ArrowUpRight, ArrowDownLeft, FilePlus } from 'lucide-react';
+import {
+  Vault,
+  Users,
+  AlertTriangle,
+  FilePlus,
+  Flame,
+  CheckCircle2,
+  RefreshCw,
+  Search,
+  ExternalLink,
+  Info,
+  Scale
+} from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { data: summary } = useQuery({
+  const { isKarigar, user } = useAuth();
+  const [karigarFilter, setKarigarFilter] = useState<'all' | 'outstanding' | 'alerts'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // 1. Daily Summary (restricted to staff)
+  const {
+    data: summary,
+    isError: isSummaryError,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useQuery({
     queryKey: ['daily-summary'],
     queryFn: () => api.getDailySummary(),
+    enabled: !isKarigar,
     refetchInterval: 30000,
   });
 
-  const { data: karigars, isLoading: isKarigarsLoading } = useQuery({
+  // 2. Karigars List (Staff sees all, Karigar sees own profile)
+  const {
+    data: karigars,
+    isLoading: isKarigarsLoading,
+    refetch: refetchKarigars,
+  } = useQuery({
     queryKey: ['karigars'],
     queryFn: () => api.getKarigars(),
+    refetchInterval: 30000,
   });
 
-  const { data: transactions, isLoading: isTransactionsLoading } = useQuery({
+  // 3. Recent Transactions (Staff sees workshop slips, Karigar sees own slips)
+  const {
+    data: transactions,
+    isLoading: isTransactionsLoading,
+    refetch: refetchTransactions,
+  } = useQuery({
     queryKey: ['recent-transactions'],
-    queryFn: () => api.getTransactions({ limit: 10 } as any),
+    queryFn: () => api.getTransactions({ limit: 12 }),
+    refetchInterval: 30000,
+  });
+
+  // 4. Loss Alerts (Staff only)
+  const {
+    data: lossAlerts,
+  } = useQuery({
+    queryKey: ['recent-loss-alerts'],
+    queryFn: () => api.getTransactions({ loss_alerts_only: true, limit: 5 }),
+    enabled: !isKarigar,
+    refetchInterval: 30000,
+  });
+
+  const handleRefreshAll = () => {
+    if (!isKarigar) refetchSummary();
+    refetchKarigars();
+    refetchTransactions();
+  };
+
+  // ---------------------------------------------------------------------------
+  // ERROR STATE
+  // ---------------------------------------------------------------------------
+  if (!isKarigar && isSummaryError) {
+    return (
+      <div className="space-y-4 p-6 bg-white border border-status-danger-border rounded-sm shadow-subtle">
+        <div className="flex items-center gap-3 text-status-danger">
+          <AlertTriangle className="w-6 h-6 flex-shrink-0" />
+          <div>
+            <h3 className="font-serif font-bold text-base">Unable to connect to Gold Accounting Engine</h3>
+            <p className="text-xs text-charcoal-600 mt-0.5">
+              {(summaryError as Error)?.message || 'Database connection error or network timeout.'}
+            </p>
+          </div>
+        </div>
+        <Button variant="secondary" size="sm" onClick={handleRefreshAll} icon={<RefreshCw className="w-3.5 h-3.5" />}>
+          Retry Connection
+        </Button>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CRAFTSMAN WORKBENCH VIEW (For Karigar Role)
+  // ---------------------------------------------------------------------------
+  if (isKarigar) {
+    const myProfile = karigars?.[0];
+
+    return (
+      <div className="space-y-6">
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parchment-300 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
+                Craftsman Workbench & Slips
+              </h2>
+              <Badge variant="brass" size="sm">
+                {myProfile?.karigar_code || 'KARIGAR'}
+              </Badge>
+            </div>
+            <p className="text-xs text-charcoal-600 mt-1">
+              Welcome, <span className="font-semibold text-charcoal-900">{user?.full_name}</span>. Real-time balance of gold currently in your custody.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleRefreshAll}
+              icon={<RefreshCw className="w-3.5 h-3.5" />}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* Karigar Privacy Isolation Notice */}
+        <div className="bg-[#F8F5EE] border border-parchment-300 rounded-sm p-3.5 flex items-start gap-3">
+          <Info className="w-4 h-4 text-brass-700 mt-0.5 flex-shrink-0" />
+          <div className="text-xs text-charcoal-700 leading-relaxed">
+            <span className="font-semibold text-charcoal-900">Personal Custody Account:</span> This workbench displays gold issued to your bench, finished ornaments returned, and approved craft wastage allowances. Central vault inventory and other craftsmen's balances are restricted.
+          </div>
+        </div>
+
+        {/* Key Metrics for Karigar */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="My Current Gold Balance"
+            value={formatWeight(myProfile?.current_balance_gross)}
+            fineGoldValue={formatWeight(myProfile?.current_balance_fine)}
+            subtitle="Physical gold currently held on your workbench"
+            icon={<Scale className="w-5 h-5 text-brass-700" />}
+          />
+
+          <StatCard
+            title="Total Issued to Bench"
+            value={formatWeight(myProfile?.total_issued_gross)}
+            subtitle="Raw gold and alloy casting grains received"
+            icon={<Vault className="w-5 h-5 text-charcoal-600" />}
+          />
+
+          <StatCard
+            title="Returned to Vault"
+            value={formatWeight(myProfile?.total_returned_gross)}
+            subtitle="Finished ornaments and scrap cuttings deposited"
+            icon={<CheckCircle2 className="w-5 h-5 text-status-success" />}
+          />
+
+          <StatCard
+            title="Craft Benchmark Allowance"
+            value={`${myProfile?.benchmark_wastage_percent || '2.00'}%`}
+            subtitle={myProfile?.specialization || 'Craft Specialization'}
+            badge={{
+              text: (myProfile?.loss_alerts_count || 0) > 0 ? `${myProfile?.loss_alerts_count} ALERT` : 'IN ORDER',
+              variant: (myProfile?.loss_alerts_count || 0) > 0 ? 'danger' : 'success',
+            }}
+            icon={<Flame className="w-5 h-5 text-brass-600" />}
+          />
+        </div>
+
+        {/* My Recent Slips */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-charcoal-900 uppercase tracking-wider">
+                My Gold Transaction History
+              </h3>
+              <p className="text-xs text-charcoal-500">Official slips issued and signed at the workshop counter</p>
+            </div>
+            <Link to="/slips" className="text-xs font-semibold text-brass-700 hover:underline">
+              View All My Slips →
+            </Link>
+          </div>
+
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>Slip No.</TableHeaderCell>
+                <TableHeaderCell>Transaction Type</TableHeaderCell>
+                <TableHeaderCell>Item Description</TableHeaderCell>
+                <TableHeaderCell align="right">Gross Wt</TableHeaderCell>
+                <TableHeaderCell align="right">Purity</TableHeaderCell>
+                <TableHeaderCell align="right">Fine Gold Wt</TableHeaderCell>
+                <TableHeaderCell align="center">Scale Confirmed</TableHeaderCell>
+                <TableHeaderCell>Date & Time</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {isTransactionsLoading ? (
+                <TableRow>
+                  <TableCell className="text-center py-6 text-charcoal-500" align="center">
+                    Loading your slips...
+                  </TableCell>
+                </TableRow>
+              ) : transactions && transactions.length > 0 ? (
+                transactions.map((tx) => (
+                  <TableRow key={tx.id} isLossAlert={tx.is_loss_alert}>
+                    <TableCell>
+                      <span className="font-mono text-xs font-semibold text-brass-800">{tx.slip_number}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          tx.transaction_type === 'ISSUE'
+                            ? 'brass'
+                            : tx.transaction_type === 'RECEIPT_ORNAMENT'
+                            ? 'success'
+                            : tx.transaction_type === 'WASTAGE_SETTLEMENT'
+                            ? 'warning'
+                            : 'default'
+                        }
+                        size="sm"
+                      >
+                        {tx.transaction_type.replace('_', ' ')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-charcoal-700 max-w-xs truncate">
+                      {tx.item_description}
+                    </TableCell>
+                    <TableCell align="right" isNumeric className="font-medium">
+                      {formatWeight(tx.gross_weight)}
+                    </TableCell>
+                    <TableCell align="right" isNumeric className="text-charcoal-600">
+                      {formatPurity(tx.purity_percent)}
+                    </TableCell>
+                    <TableCell align="right" isNumeric className="font-semibold text-brass-900">
+                      {formatWeight(tx.fine_weight)}
+                    </TableCell>
+                    <TableCell align="center">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-status-success font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Verified
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs text-charcoal-500">
+                      {formatDateTime(tx.created_at)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell className="text-center py-6 text-charcoal-500" align="center">
+                    No transactions recorded for your account yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // WORKSHOP OPERATIONS DASHBOARD (For Staff / Finance Head / Issue Clerk)
+  // ---------------------------------------------------------------------------
+
+  // Compute central vault and refiner figures cleanly
+  const centralVaultGross = summary?.central_vault_gross ?? summary?.vault_raw_gold_gross ?? '0.000';
+  const centralVaultFine = summary?.central_vault_fine ?? summary?.vault_raw_gold_fine ?? '0.000';
+  const refinerGross = summary?.refiner_stock_gross ?? '0.000';
+  const refinerFine = summary?.refiner_stock_fine ?? '0.000';
+  const karigarGross = summary?.karigar_outstanding_gross ?? '0.000';
+  const karigarFine = summary?.karigar_outstanding_fine ?? '0.000';
+  const totalWorkshopFine = summary?.total_workshop_gold_fine ?? '0.000';
+
+  // Filter karigars for the table preview
+  const filteredKarigars = (karigars || []).filter((k) => {
+    const grossBal = parseFloat(String(k.current_balance_gross || 0));
+    const matchesFilter =
+      karigarFilter === 'all'
+        ? true
+        : karigarFilter === 'outstanding'
+        ? grossBal > 0.0001
+        : k.loss_alerts_count > 0;
+
+    const matchesSearch =
+      searchQuery === '' ||
+      k.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      k.karigar_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      k.specialization.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesFilter && matchesSearch;
   });
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Quick Action */}
+      {/* 1. TOP HEADER & QUICK ACTIONS */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parchment-300 pb-4">
         <div>
-          <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
-            Workshop Operations & Gold Position
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
+              Workshop Operations & Gold Position
+            </h2>
+            <Badge variant="brass" size="sm">
+              Live Ledger
+            </Badge>
+          </div>
           <p className="text-xs text-charcoal-600 mt-0.5">
-            Real-time reconciliation for Coimbatore central workshop and 5 retail showrooms.
+            Real-time multi-purity accounting for Coimbatore workshop, 5 retail showrooms, and ~40 craftsmen.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link to="/slips">
-            <Button variant="primary" size="sm" icon={<FilePlus className="w-3.5 h-3.5" />}>
-              Issue / Receive Gold Slip
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleRefreshAll}
+            icon={<RefreshCw className="w-3.5 h-3.5" />}
+          >
+            Refresh
+          </Button>
+          <Link to="/slips" className="flex-1 sm:flex-initial">
+            <Button variant="primary" size="sm" icon={<FilePlus className="w-3.5 h-3.5" />} className="w-full">
+              New Gold Slip
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Loss Alert Warning if any alert exists */}
+      {/* 2. PROMINENT LOSS ALERT BANNER (If unresolved discrepancies exist) */}
       {summary && summary.loss_alerts_count > 0 && (
         <AlertBanner
           type="danger"
-          title="Gold Loss Alert Triggered"
-          message={`${summary.loss_alerts_count} transaction(s) have exceeded the allowed workshop wastage tolerance threshold (0.100g). Immediate verification required.`}
-          actionText="Review Loss Alerts"
+          title={`${summary.loss_alerts_count} Unresolved Loss Alert(s) Requiring Finance Review`}
+          message={`Excess craft wastage exceeding the workshop threshold (0.100g) has been flagged. Excess wastage is held as an active alert liability and is NOT settled from karigar balances.`}
+          actionText="Review Loss Alerts Ledger"
           onAction={() => navigate('/loss-alerts')}
         />
       )}
 
-      {/* Key Metric KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 3. OPERATIONAL SUMMARY: 5 PILLAR AUDIT METRICS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* Card 1: Central Vault */}
         <StatCard
-          title="Total Workshop Fine Gold"
-          value={formatWeight(summary?.total_workshop_gold_fine)}
-          fineGoldValue={formatWeight(summary?.total_workshop_gold_fine)}
-          subtitle="Vault + Outstanding in Karigar Hands"
-          icon={<Coins className="w-5 h-5 text-brass-600" />}
-        />
-
-        <StatCard
-          title="Central Vault Balance"
-          value={formatWeight(summary?.vault_raw_gold_gross)}
-          fineGoldValue={formatWeight(summary?.vault_raw_gold_fine)}
-          subtitle="Bullion bars, casting grain & scrap"
+          title="Central Strongroom Vault"
+          value={formatWeight(centralVaultGross)}
+          fineGoldValue={formatWeight(centralVaultFine)}
+          subtitle="24K Bullion bars & 22K casting grain"
           icon={<Vault className="w-5 h-5 text-brass-700" />}
         />
 
+        {/* Card 2: Karigar Bench Custody */}
         <StatCard
-          title="Outstanding with Karigars"
-          value={formatWeight(summary?.karigar_outstanding_gross)}
-          fineGoldValue={formatWeight(summary?.karigar_outstanding_fine)}
-          badge={{ text: `${karigars?.length || 0} Craftsmen`, variant: 'brass' }}
-          subtitle="Total work-in-progress on benches"
-          icon={<Users className="w-5 h-5 text-charcoal-600" />}
+          title="Karigar Bench Custody"
+          value={formatWeight(karigarGross)}
+          fineGoldValue={formatWeight(karigarFine)}
+          badge={{
+            text: `${summary?.active_karigars_with_balance_count ?? karigars?.length ?? 0} Active`,
+            variant: 'brass',
+          }}
+          subtitle="Work-in-progress on artisan benches"
+          icon={<Users className="w-5 h-5 text-charcoal-700" />}
         />
 
+        {/* Card 3: Refiner Stock */}
         <StatCard
-          title="Wastage & Loss Alerts"
-          value={formatWeight(summary?.total_wastage_today_gross)}
-          isLossAlert={(summary?.loss_alerts_count || 0) > 0}
+          title="Refinery Stock"
+          value={formatWeight(refinerGross)}
+          fineGoldValue={formatWeight(refinerFine)}
+          badge={{ text: 'In Dispatch', variant: 'default' }}
+          subtitle="Melting scrap sent for assay refining"
+          icon={<Flame className="w-5 h-5 text-brass-600" />}
+        />
+
+        {/* Card 4: Manufacturing Wastage */}
+        <StatCard
+          title="Craft Wastage Settled"
+          value={formatWeight(summary?.total_legitimate_wastage_today_gross)}
+          fineGoldValue={formatWeight(summary?.total_legitimate_wastage_today_fine)}
+          subtitle="Approved craft loss settled today"
+          icon={<CheckCircle2 className="w-5 h-5 text-status-success" />}
+        />
+
+        {/* Card 5: Loss Alerts Requiring Review */}
+        <StatCard
+          title="Loss Alerts Pending"
+          value={`${summary?.loss_alerts_count ?? 0} Alerts`}
+          isLossAlert={(summary?.loss_alerts_count ?? 0) > 0}
           badge={{
-            text: `${summary?.loss_alerts_count || 0} Alerts`,
-            variant: (summary?.loss_alerts_count || 0) > 0 ? 'danger' : 'success',
+            text: (summary?.loss_alerts_count ?? 0) > 0 ? 'Action Req' : 'Clear',
+            variant: (summary?.loss_alerts_count ?? 0) > 0 ? 'danger' : 'success',
           }}
-          subtitle="Today's reported workshop filing & scrap"
-          icon={<AlertTriangle className="w-5 h-5" />}
+          subtitle="Variance > 0.100g requiring audit"
+          icon={<AlertTriangle className="w-5 h-5 text-status-danger" />}
         />
       </div>
 
-      {/* Split Section: Active Karigars & Recent Slips */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Active Karigars Ledger Preview (2 Cols) */}
-        <div className="lg:col-span-2 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-charcoal-900 uppercase tracking-wider">
-              Karigar Work-in-Progress Balances
+      {/* 4. TOTAL WORKSHOP GOLD CUSTODY DISTRIBUTION BAR */}
+      <div className="bg-white border border-parchment-300 rounded-sm p-4 shadow-subtle space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-parchment-200 pb-2">
+          <div className="flex items-center gap-2">
+            <Scale className="w-4 h-4 text-brass-700" />
+            <h3 className="text-xs font-semibold text-charcoal-900 uppercase tracking-wider">
+              Total Company Gold Position: <span className="text-brass-800 font-mono text-sm">{formatWeight(totalWorkshopFine)} Pure Fine</span>
             </h3>
-            <Link to="/karigars" className="text-xs font-semibold text-brass-700 hover:underline">
-              View All Karigars →
-            </Link>
+          </div>
+          <div className="flex items-center gap-4 text-xs font-mono text-charcoal-600">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-brass-700" /> Vault ({formatWeight(centralVaultFine)})
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-brass-400" /> Karigars ({formatWeight(karigarFine)})
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-charcoal-400" /> Refinery ({formatWeight(refinerFine)})
+            </span>
+          </div>
+        </div>
+
+        {/* Visual Custody Ratio Bar */}
+        {(() => {
+          const totalNum = parseFloat(String(totalWorkshopFine || 1)) || 1;
+          const vaultPct = Math.max(0, Math.min(100, (parseFloat(String(centralVaultFine || 0)) / totalNum) * 100));
+          const karigarPct = Math.max(0, Math.min(100, (parseFloat(String(karigarFine || 0)) / totalNum) * 100));
+          const refinerPct = Math.max(0, Math.min(100, (parseFloat(String(refinerFine || 0)) / totalNum) * 100));
+
+          return (
+            <div className="space-y-1">
+              <div className="h-3 w-full bg-parchment-200 rounded-xs overflow-hidden flex shadow-inner">
+                <div
+                  style={{ width: `${vaultPct.toFixed(1)}%` }}
+                  className="bg-brass-700 transition-all duration-300"
+                  title={`Vault: ${vaultPct.toFixed(1)}%`}
+                />
+                <div
+                  style={{ width: `${karigarPct.toFixed(1)}%` }}
+                  className="bg-brass-400 transition-all duration-300"
+                  title={`Karigar Custody: ${karigarPct.toFixed(1)}%`}
+                />
+                <div
+                  style={{ width: `${refinerPct.toFixed(1)}%` }}
+                  className="bg-charcoal-400 transition-all duration-300"
+                  title={`Refinery: ${refinerPct.toFixed(1)}%`}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] font-mono text-charcoal-500 pt-0.5">
+                <span>Vault: {vaultPct.toFixed(1)}%</span>
+                <span>Craftsmen Custody: {karigarPct.toFixed(1)}%</span>
+                <span>Refinery Dispatch: {refinerPct.toFixed(1)}%</span>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* 5. WASTAGE & LOSS ACCOUNTING CLARITY PANEL */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3.5 bg-[#FAF8F3] border border-parchment-300 rounded-sm text-xs">
+        <div className="flex items-start gap-2.5">
+          <div className="w-5 h-5 rounded-full bg-brass-100 text-brass-800 flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">
+            1
+          </div>
+          <div>
+            <div className="font-semibold text-charcoal-900">Approved Craft Wastage</div>
+            <p className="text-charcoal-600 text-[11px] mt-0.5 leading-relaxed">
+              Legitimate filing/polishing loss within benchmark tolerance (e.g. 2.00%). Relieved via explicit <code className="text-brass-800 font-mono">WST-...</code> slips.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2.5">
+          <div className="w-5 h-5 rounded-full bg-charcoal-100 text-charcoal-800 flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">
+            2
+          </div>
+          <div>
+            <div className="font-semibold text-charcoal-900">Outstanding Physical Gold</div>
+            <p className="text-charcoal-600 text-[11px] mt-0.5 leading-relaxed">
+              Active bench WIP and scrap cuttings held by karigars. <span className="font-semibold text-charcoal-900">Not a loss</span> — physical material awaiting vault return.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2.5">
+          <div className="w-5 h-5 rounded-full bg-red-100 text-status-danger flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">
+            3
+          </div>
+          <div>
+            <div className="font-semibold text-charcoal-900">Excess Wastage Loss Alerts</div>
+            <p className="text-charcoal-600 text-[11px] mt-0.5 leading-relaxed">
+              Variance exceeding tolerance by &gt; 0.100g. Held as active alert liability pending physical sweeps and Finance Head audit.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. MAIN SPLIT SECTION: ACTIVE KARIGARS & RECENT SLIPS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Karigars Ledger Preview (2 Cols) */}
+        <div className="lg:col-span-2 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-charcoal-900 uppercase tracking-wider">
+                Karigars with Outstanding Gold
+              </h3>
+              <p className="text-xs text-charcoal-500">Live physical gross & fine gold balances on artisan benches</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Filter Tabs */}
+              <div className="flex rounded-xs bg-parchment-200 p-0.5 text-[11px] font-medium text-charcoal-700">
+                <button
+                  onClick={() => setKarigarFilter('all')}
+                  className={`px-2 py-0.5 rounded-xs transition-colors ${
+                    karigarFilter === 'all' ? 'bg-white shadow-xs font-semibold text-charcoal-900' : 'hover:text-charcoal-900'
+                  }`}
+                >
+                  All ({karigars?.length || 0})
+                </button>
+                <button
+                  onClick={() => setKarigarFilter('outstanding')}
+                  className={`px-2 py-0.5 rounded-xs transition-colors ${
+                    karigarFilter === 'outstanding' ? 'bg-white shadow-xs font-semibold text-brass-800' : 'hover:text-charcoal-900'
+                  }`}
+                >
+                  Outstanding Only
+                </button>
+                <button
+                  onClick={() => setKarigarFilter('alerts')}
+                  className={`px-2 py-0.5 rounded-xs transition-colors ${
+                    karigarFilter === 'alerts' ? 'bg-white shadow-xs font-semibold text-status-danger' : 'hover:text-charcoal-900'
+                  }`}
+                >
+                  Alerts ({summary?.loss_alerts_count || 0})
+                </button>
+              </div>
+
+              <Link to="/karigars" className="text-xs font-semibold text-brass-700 hover:underline flex items-center gap-0.5">
+                Full Ledger <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Search Input for Karigars */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-charcoal-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Search by karigar name, code, or specialization..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-parchment-300 rounded-xs placeholder-charcoal-400 focus:outline-none focus:border-brass-600 focus:ring-1 focus:ring-brass-600 font-sans"
+            />
           </div>
 
           <Table>
@@ -128,35 +580,58 @@ export const Dashboard: React.FC = () => {
             <TableBody>
               {isKarigarsLoading ? (
                 <TableRow>
-                  <TableCell className="text-center py-6 text-charcoal-500" align="center">
-                    Loading karigar ledger...
+                  <TableCell className="text-center py-8 text-charcoal-500" align="center">
+                    <div className="flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-brass-600" />
+                      <span>Loading karigar balance ledger...</span>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : karigars && karigars.length > 0 ? (
-                karigars.slice(0, 5).map((k) => (
-                  <TableRow key={k.id}>
-                    <TableCell>
-                      <span className="font-mono text-xs font-semibold text-brass-800">{k.karigar_code}</span>
-                    </TableCell>
-                    <TableCell className="font-medium text-charcoal-900">{k.name}</TableCell>
-                    <TableCell className="text-xs text-charcoal-600">{k.specialization}</TableCell>
-                    <TableCell align="right" isNumeric className="font-semibold text-charcoal-900">
-                      {formatWeight(k.current_balance_gross)}
-                    </TableCell>
-                    <TableCell align="right" isNumeric className="text-brass-800 font-semibold">
-                      {formatWeight(k.current_balance_fine)}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Badge variant={k.loss_alerts_count > 0 ? 'danger' : 'brass'} size="sm">
-                        {k.loss_alerts_count > 0 ? `${k.loss_alerts_count} ALERT` : 'NORMAL'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
+              ) : filteredKarigars.length > 0 ? (
+                filteredKarigars.slice(0, 7).map((k) => {
+                  const hasAlert = k.loss_alerts_count > 0;
+                  const hasGold = parseFloat(String(k.current_balance_gross || 0)) > 0.001;
+
+                  return (
+                    <TableRow
+                      key={k.id}
+                      onClick={() => navigate(`/karigars`)}
+                      isLossAlert={hasAlert}
+                      className="cursor-pointer"
+                    >
+                      <TableCell>
+                        <span className="font-mono text-xs font-semibold text-brass-800">{k.karigar_code}</span>
+                      </TableCell>
+                      <TableCell className="font-medium text-charcoal-900">{k.name}</TableCell>
+                      <TableCell className="text-xs text-charcoal-600">{k.specialization}</TableCell>
+                      <TableCell align="right" isNumeric className="font-semibold text-charcoal-900">
+                        {formatWeight(k.current_balance_gross)}
+                      </TableCell>
+                      <TableCell align="right" isNumeric className="text-brass-800 font-semibold">
+                        {formatWeight(k.current_balance_fine)}
+                      </TableCell>
+                      <TableCell align="center">
+                        {hasAlert ? (
+                          <Badge variant="danger" size="sm">
+                            {k.loss_alerts_count} ALERT
+                          </Badge>
+                        ) : hasGold ? (
+                          <Badge variant="brass" size="sm">
+                            HOLDING GOLD
+                          </Badge>
+                        ) : (
+                          <Badge variant="default" size="sm">
+                            CLEAR
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
-                  <TableCell className="text-center py-4 text-charcoal-500" align="center">
-                    No active karigars found.
+                  <TableCell className="text-center py-8 text-charcoal-500" align="center">
+                    No craftsmen found matching the selected filter.
                   </TableCell>
                 </TableRow>
               )}
@@ -164,33 +639,48 @@ export const Dashboard: React.FC = () => {
           </Table>
         </div>
 
-        {/* Recent Transaction Slips (1 Col) */}
+        {/* Recent Gold Slips (1 Col) */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-charcoal-900 uppercase tracking-wider">
-              Recent Gold Slips
-            </h3>
-            <Link to="/slips" className="text-xs font-semibold text-brass-700 hover:underline">
-              All Slips →
+            <div>
+              <h3 className="text-sm font-semibold text-charcoal-900 uppercase tracking-wider">
+                Recent Gold Slips
+              </h3>
+              <p className="text-xs text-charcoal-500">Live movement at workshop counter</p>
+            </div>
+            <Link to="/slips" className="text-xs font-semibold text-brass-700 hover:underline flex items-center gap-0.5">
+              All Slips <ExternalLink className="w-3 h-3" />
             </Link>
           </div>
 
-          <div className="bg-white border border-parchment-300 rounded-sm p-3 divide-y divide-parchment-200 shadow-subtle">
+          <div className="bg-white border border-parchment-300 rounded-sm p-3 divide-y divide-parchment-200 shadow-subtle max-h-[530px] overflow-y-auto">
             {isTransactionsLoading ? (
-              <p className="text-xs text-charcoal-500 py-4 text-center">Loading slips...</p>
+              <div className="py-8 text-center text-xs text-charcoal-500 flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-brass-600" />
+                <span>Loading recent slips...</span>
+              </div>
             ) : transactions && transactions.length > 0 ? (
-              transactions.slice(0, 5).map((tx) => (
-                <div key={tx.id} className="py-2.5 first:pt-0 last:pb-0">
-                  <div className="flex items-center justify-between mb-1">
+              transactions.slice(0, 7).map((tx) => (
+                <div key={tx.id} className="py-2.5 first:pt-0 last:pb-0 space-y-1">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      {tx.transaction_type === 'ISSUE' ? (
-                        <ArrowUpRight className="w-3.5 h-3.5 text-brass-600" />
-                      ) : (
-                        <ArrowDownLeft className="w-3.5 h-3.5 text-status-success" />
-                      )}
-                      <span className="font-mono text-xs font-semibold text-charcoal-900">
-                        {tx.slip_number}
-                      </span>
+                      <span className="font-mono text-xs font-bold text-charcoal-900">{tx.slip_number}</span>
+                      <Badge
+                        variant={
+                          tx.transaction_type === 'ISSUE'
+                            ? 'brass'
+                            : tx.transaction_type === 'RECEIPT_ORNAMENT'
+                            ? 'success'
+                            : tx.transaction_type === 'WASTAGE_SETTLEMENT'
+                            ? 'warning'
+                            : tx.transaction_type === 'LOSS_ADJUSTMENT'
+                            ? 'danger'
+                            : 'default'
+                        }
+                        size="sm"
+                      >
+                        {tx.transaction_type.replace('_', ' ')}
+                      </Badge>
                     </div>
                     <span className="font-mono text-xs font-bold text-charcoal-900 tabular-nums">
                       {formatWeight(tx.gross_weight)}
@@ -198,26 +688,101 @@ export const Dashboard: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-charcoal-600">
-                    <span className="truncate max-w-[140px]">{tx.item_description}</span>
-                    <span className="font-mono text-brass-800">{formatPurity(tx.purity_percent)}</span>
+                    <span className="truncate max-w-[150px] font-medium">
+                      {tx.karigar_name || tx.karigar_code || 'Workshop Central'}
+                    </span>
+                    <span className="font-mono text-brass-800">
+                      {formatWeight(tx.fine_weight)} Fine
+                    </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] text-charcoal-500 mt-1">
+                  <div className="flex items-center justify-between text-[10px] text-charcoal-500">
                     <span>{formatDateTime(tx.created_at)}</span>
-                    {tx.is_loss_alert && (
-                      <Badge variant="danger" size="sm">
-                        LOSS ALERT
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {tx.is_loss_alert && (
+                        <span className="px-1 py-0.2 rounded-xs font-mono font-bold bg-status-danger text-white text-[9px]">
+                          LOSS ALERT
+                        </span>
+                      )}
+                      <span className="text-status-success font-medium flex items-center gap-0.5">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Confirmed
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-xs text-charcoal-500 py-4 text-center">No transactions recorded yet today.</p>
+              <p className="text-xs text-charcoal-500 py-6 text-center">No transactions recorded yet today.</p>
             )}
           </div>
         </div>
       </div>
+
+      {/* 7. UNRESOLVED LOSS ALERTS DRILL-DOWN (If any alerts exist) */}
+      {lossAlerts && lossAlerts.length > 0 && (
+        <div className="bg-white border border-status-danger-border rounded-sm p-4 shadow-subtle space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-status-danger" />
+              <h3 className="text-xs font-semibold text-status-danger uppercase tracking-wider">
+                Active Wastage Loss Alerts Requiring Finance Head Audit
+              </h3>
+            </div>
+            <Link to="/loss-alerts" className="text-xs font-semibold text-status-danger hover:underline">
+              View Detailed Loss Audit Ledger →
+            </Link>
+          </div>
+
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>Slip No.</TableHeaderCell>
+                <TableHeaderCell>Karigar</TableHeaderCell>
+                <TableHeaderCell>Description</TableHeaderCell>
+                <TableHeaderCell align="right">Allowed Wastage</TableHeaderCell>
+                <TableHeaderCell align="right">Actual Reported</TableHeaderCell>
+                <TableHeaderCell align="right">Excess Variance</TableHeaderCell>
+                <TableHeaderCell align="center">Action</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {lossAlerts.map((alert) => (
+                <TableRow key={alert.id} isLossAlert={true}>
+                  <TableCell>
+                    <span className="font-mono text-xs font-bold text-status-danger">{alert.slip_number}</span>
+                  </TableCell>
+                  <TableCell className="font-medium text-charcoal-900">
+                    {alert.karigar_name || alert.karigar_code || `Karigar #${alert.karigar_id}`}
+                  </TableCell>
+                  <TableCell className="text-xs text-charcoal-700">{alert.item_description}</TableCell>
+                  <TableCell align="right" isNumeric className="text-charcoal-600">
+                    {formatWeight(
+                      (parseFloat(String(alert.gross_weight || 0)) * parseFloat(String(alert.allowed_wastage_percent || 0))) / 100
+                    )} ({alert.allowed_wastage_percent}%)
+                  </TableCell>
+                  <TableCell align="right" isNumeric className="font-medium text-charcoal-900">
+                    {formatWeight(alert.actual_wastage_weight)}
+                  </TableCell>
+                  <TableCell align="right" isNumeric className="font-bold text-status-danger">
+                    +{formatWeight(alert.wastage_variance_weight)}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/loss-alerts')}
+                      className="text-[11px] py-1 border-status-danger text-status-danger hover:bg-red-50"
+                    >
+                      Audit Loss
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };

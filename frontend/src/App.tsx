@@ -41,6 +41,7 @@ export const App: React.FC = () => {
               <Route index element={<Dashboard />} />
               <Route path="karigars" element={<Karigars />} />
               <Route path="slips" element={<Transactions />} />
+              <Route path="transactions" element={<Navigate to="/slips" replace />} />
               <Route path="daily-stock" element={<DailyStock />} />
               <Route path="loss-alerts" element={<LossAlerts />} />
               <Route path="inventory" element={<VaultInventory />} />

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
+from typing import Optional
 import enum
 from app.db.base import Base
 
@@ -54,6 +55,14 @@ class GoldTransaction(Base):
 
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+
+    @property
+    def karigar_name(self) -> Optional[str]:
+        return self.karigar.name if self.karigar else None
+
+    @property
+    def karigar_code(self) -> Optional[str]:
+        return self.karigar.karigar_code if self.karigar else None
 
     def __repr__(self):
         return f"<GoldTransaction {self.slip_number} {self.transaction_type} {self.gross_weight}g>"

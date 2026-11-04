@@ -245,10 +245,21 @@ def get_daily_stock_summary(
     - Legitimate Wastage Consumed Today
     - Excess Wastage Loss Alerts Requiring Investigation
     """
-    # 1. Vault gold from inventory
+    # 1. Vault gold from inventory: separate central strongroom from refinery stock
     vault_items = db.query(GoldInventory).all()
-    vault_gross = sum((Decimal(str(item.gross_weight)) for item in vault_items), Decimal("0.000"))
-    vault_fine = sum((Decimal(str(item.fine_weight)) for item in vault_items), Decimal("0.000"))
+    refiner_items = [
+        item for item in vault_items 
+        if "refin" in (item.category or "").lower() or "refin" in (item.location or "").lower()
+    ]
+    central_items = [item for item in vault_items if item not in refiner_items]
+
+    refiner_gross = sum((Decimal(str(item.gross_weight)) for item in refiner_items), Decimal("0.000"))
+    refiner_fine = sum((Decimal(str(item.fine_weight)) for item in refiner_items), Decimal("0.000"))
+    central_gross = sum((Decimal(str(item.gross_weight)) for item in central_items), Decimal("0.000"))
+    central_fine = sum((Decimal(str(item.fine_weight)) for item in central_items), Decimal("0.000"))
+
+    vault_gross = central_gross + refiner_gross
+    vault_fine = central_fine + refiner_fine
 
     # 2. Karigar balances
     karigars = db.query(Karigar).filter(Karigar.is_active == True).all()
@@ -277,6 +288,20 @@ def get_daily_stock_summary(
 
     total_workshop_fine = round_weight(vault_fine + karigar_outstanding_fine)
 
+    # Count karigars who currently hold unreturned gold on bench
+    active_karigars_with_balance = 0
+    for k in karigars:
+        k_issues = [t for t in all_issues if t.karigar_id == k.id]
+        k_settled = [t for t in all_settled if t.karigar_id == k.id]
+        k_bal = compute_karigar_balance(
+            k.opening_balance_gross,
+            k.opening_balance_fine,
+            k_issues,
+            k_settled
+        )
+        if k_bal.closing_balance_gross > Decimal("0.000"):
+            active_karigars_with_balance += 1
+
     # 3. Today's stats
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     today_txs = db.query(GoldTransaction).filter(GoldTransaction.created_at >= today_start).all()
@@ -292,12 +317,18 @@ def get_daily_stock_summary(
     today_wastage_settled_fine = sum((Decimal(str(tx.fine_weight)) for tx in today_txs if tx.transaction_type == TransactionType.WASTAGE_SETTLEMENT.value), Decimal("0.000"))
     
     today_wastage_reported_gross = sum((Decimal(str(tx.actual_wastage_weight or 0)) for tx in today_txs if tx.transaction_type == TransactionType.RECEIPT_ORNAMENT.value), Decimal("0.000"))
-    loss_alerts_count = sum(1 for tx in today_txs if tx.is_loss_alert)
+    today_excess_wastage_gross = sum((Decimal(str(tx.wastage_variance_weight or 0)) for tx in today_txs if tx.is_loss_alert), Decimal("0.000"))
+    
+    total_loss_alerts_count = db.query(GoldTransaction).filter(GoldTransaction.is_loss_alert == True).count()
 
     return DailyStockSummary(
         date=date.today().isoformat(),
         vault_raw_gold_gross=round_weight(vault_gross),
         vault_raw_gold_fine=round_weight(vault_fine),
+        central_vault_gross=round_weight(central_gross),
+        central_vault_fine=round_weight(central_fine),
+        refiner_stock_gross=round_weight(refiner_gross),
+        refiner_stock_fine=round_weight(refiner_fine),
         karigar_outstanding_gross=karigar_outstanding_gross,
         karigar_outstanding_fine=karigar_outstanding_fine,
         total_workshop_gold_fine=total_workshop_fine,
@@ -306,5 +337,8 @@ def get_daily_stock_summary(
         total_legitimate_wastage_today_gross=round_weight(today_wastage_settled_gross),
         total_legitimate_wastage_today_fine=round_weight(today_wastage_settled_fine),
         total_wastage_today_gross=round_weight(today_wastage_reported_gross),
-        loss_alerts_count=loss_alerts_count
+        total_excess_wastage_today_gross=round_weight(today_excess_wastage_gross),
+        loss_alerts_count=total_loss_alerts_count,
+        active_karigars_with_balance_count=active_karigars_with_balance,
+        pending_reconciliations_count=active_karigars_with_balance
     )

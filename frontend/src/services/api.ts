@@ -69,11 +69,17 @@ class ApiClient {
   }
 
   // Transactions
-  async getTransactions(params?: { karigar_id?: number; transaction_type?: string; loss_alerts_only?: boolean }): Promise<GoldTransaction[]> {
+  async getTransactions(params?: {
+    karigar_id?: number;
+    transaction_type?: string;
+    loss_alerts_only?: boolean;
+    limit?: number;
+  }): Promise<GoldTransaction[]> {
     const searchParams = new URLSearchParams();
     if (params?.karigar_id) searchParams.append('karigar_id', params.karigar_id.toString());
     if (params?.transaction_type) searchParams.append('transaction_type', params.transaction_type);
     if (params?.loss_alerts_only) searchParams.append('loss_alerts_only', 'true');
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
     
     const qs = searchParams.toString();
     return this.request(`/transactions${qs ? `?${qs}` : ''}`);

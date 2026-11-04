@@ -25,6 +25,8 @@ class TransactionResponse(BaseModel):
     related_slip_number: Optional[str] = None
     transaction_type: str
     karigar_id: Optional[int]
+    karigar_name: Optional[str] = None
+    karigar_code: Optional[str] = None
     created_by_user_id: Optional[int]
     item_description: str
     gross_weight: Decimal
@@ -47,6 +49,10 @@ class DailyStockSummary(BaseModel):
     date: str
     vault_raw_gold_gross: Decimal
     vault_raw_gold_fine: Decimal
+    central_vault_gross: Decimal = Decimal("0.000")
+    central_vault_fine: Decimal = Decimal("0.000")
+    refiner_stock_gross: Decimal = Decimal("0.000")
+    refiner_stock_fine: Decimal = Decimal("0.000")
     karigar_outstanding_gross: Decimal
     karigar_outstanding_fine: Decimal
     total_workshop_gold_fine: Decimal
@@ -55,4 +61,7 @@ class DailyStockSummary(BaseModel):
     total_legitimate_wastage_today_gross: Decimal
     total_legitimate_wastage_today_fine: Decimal
     total_wastage_today_gross: Decimal
+    total_excess_wastage_today_gross: Decimal = Decimal("0.000")
     loss_alerts_count: int
+    active_karigars_with_balance_count: int = 0
+    pending_reconciliations_count: int = 0

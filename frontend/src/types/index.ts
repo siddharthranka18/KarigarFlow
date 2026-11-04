@@ -42,6 +42,8 @@ export interface GoldTransaction {
   related_slip_number?: string;
   transaction_type: TransactionType;
   karigar_id?: number;
+  karigar_name?: string;
+  karigar_code?: string;
   created_by_user_id?: number;
   item_description: string;
   gross_weight: string;
@@ -63,6 +65,10 @@ export interface DailyStockSummary {
   date: string;
   vault_raw_gold_gross: string;
   vault_raw_gold_fine: string;
+  central_vault_gross?: string;
+  central_vault_fine?: string;
+  refiner_stock_gross?: string;
+  refiner_stock_fine?: string;
   karigar_outstanding_gross: string;
   karigar_outstanding_fine: string;
   total_workshop_gold_fine: string;
@@ -71,7 +77,10 @@ export interface DailyStockSummary {
   total_legitimate_wastage_today_gross: string;
   total_legitimate_wastage_today_fine: string;
   total_wastage_today_gross: string;
+  total_excess_wastage_today_gross?: string;
   loss_alerts_count: number;
+  active_karigars_with_balance_count?: number;
+  pending_reconciliations_count?: number;
 }
 
 export interface InventoryItem {
