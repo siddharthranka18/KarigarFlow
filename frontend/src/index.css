@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-parchment-bg: #F9F6F0;
+    --color-surface: #FFFFFF;
+    --color-surface-subtle: #FDFBF7;
+    --color-border: #EAE4D7;
+    --color-border-dark: #DDD4C3;
+    --color-text-primary: #1C1917;
+    --color-text-secondary: #57534E;
+    --color-text-muted: #857F77;
+    --color-brass-primary: #B88730;
+    --color-brass-accent: #9C6E25;
+  }
+
+  body {
+    background-color: var(--color-parchment-bg);
+    color: var(--color-text-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Fixed precision numeric values (weights, purities, financial figures) */
+  .numeric-cell,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  /* Workshop Ledger Card */
+  .ledger-card {
+    background-color: #FFFFFF;
+    border: 1px solid #EAE4D7;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px 0 rgba(28, 25, 23, 0.04);
+  }
+
+  /* Table Headers for Gold Accounting */
+  .ledger-th {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #57534E;
+    background-color: #F8F5EE;
+    border-bottom: 1px solid #EAE4D7;
+  }
+
+  .ledger-td {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.875rem;
+    color: #1C1917;
+    border-bottom: 1px solid #F3EFE6;
+  }
+
+  /* Metric Pill */
+  .gold-metric-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-family: ui-monospace, monospace;
+    font-weight: 500;
+  }
+}
+

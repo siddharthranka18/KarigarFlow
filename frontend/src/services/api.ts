@@ -1,0 +1,112 @@
+import { Karigar, GoldTransaction, DailyStockSummary, InventoryItem } from '../types';
+
+const API_BASE = '/api';
+
+class ApiClient {
+  private getToken(): string | null {
+    return localStorage.getItem('karigarflow_token');
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> || {}),
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (response.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('karigarflow_token');
+      localStorage.removeItem('karigarflow_user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      throw new Error('Session expired. Please log in again.');
+    }
+
+    if (!response.ok) {
+      let errorMessage = 'An unexpected error occurred';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } catch {
+        errorMessage = response.statusText;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  }
+
+  // Health
+  async getHealth(): Promise<{ status: string; database: string }> {
+    return this.request('/health');
+  }
+
+  // Karigars
+  async getKarigars(): Promise<Karigar[]> {
+    return this.request('/karigars');
+  }
+
+  async getKarigar(id: number): Promise<Karigar> {
+    return this.request(`/karigars/${id}`);
+  }
+
+  async createKarigar(data: Partial<Karigar>): Promise<Karigar> {
+    return this.request('/karigars', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Transactions
+  async getTransactions(params?: { karigar_id?: number; transaction_type?: string; loss_alerts_only?: boolean }): Promise<GoldTransaction[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.karigar_id) searchParams.append('karigar_id', params.karigar_id.toString());
+    if (params?.transaction_type) searchParams.append('transaction_type', params.transaction_type);
+    if (params?.loss_alerts_only) searchParams.append('loss_alerts_only', 'true');
+    
+    const qs = searchParams.toString();
+    return this.request(`/transactions${qs ? `?${qs}` : ''}`);
+  }
+
+  async createTransaction(data: {
+    transaction_type: string;
+    karigar_id?: number;
+    item_description: string;
+    gross_weight: number | string;
+    stone_weight?: number | string;
+    purity_percent: number | string;
+    allowed_wastage_percent?: number | string;
+    actual_wastage_weight?: number | string;
+    scale_reading_confirmed?: boolean;
+    scale_image_url?: string;
+    notes?: string;
+  }): Promise<GoldTransaction> {
+    return this.request('/transactions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getDailySummary(): Promise<DailyStockSummary> {
+    return this.request('/transactions/daily-summary');
+  }
+
+  // Inventory
+  async getInventory(): Promise<InventoryItem[]> {
+    return this.request('/inventory');
+  }
+}
+
+export const api = new ApiClient();
+

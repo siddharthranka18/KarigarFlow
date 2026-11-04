@@ -1,0 +1,84 @@
+export type UserRole = 'admin' | 'finance_head' | 'manager' | 'issue_clerk' | 'karigar';
+
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AuthSession {
+  token: string;
+  user: User;
+}
+
+export interface Karigar {
+  id: number;
+  karigar_code: string;
+  name: string;
+  phone?: string;
+  specialization: string;
+  benchmark_wastage_percent: number | string;
+  opening_balance_gross: number | string;
+  opening_balance_fine: number | string;
+  is_active: boolean;
+  created_at: string;
+  current_balance_gross: number | string;
+  current_balance_fine: number | string;
+  total_issued_gross: number | string;
+  total_returned_gross: number | string;
+  active_jobs_count: number;
+  loss_alerts_count: number;
+}
+
+export type TransactionType = 'ISSUE' | 'RECEIPT_ORNAMENT' | 'RECEIPT_SCRAP' | 'RECEIPT_DUST' | 'PURCHASE';
+
+export interface GoldTransaction {
+  id: number;
+  slip_number: string;
+  transaction_type: TransactionType;
+  karigar_id?: number;
+  created_by_user_id?: number;
+  item_description: string;
+  gross_weight: string;
+  stone_weight: string;
+  net_weight: string;
+  purity_percent: string;
+  fine_weight: string;
+  allowed_wastage_percent: string;
+  actual_wastage_weight: string;
+  wastage_variance_weight: string;
+  is_loss_alert: boolean;
+  scale_reading_confirmed: boolean;
+  scale_image_url?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface DailyStockSummary {
+  date: string;
+  vault_raw_gold_gross: string;
+  vault_raw_gold_fine: string;
+  karigar_outstanding_gross: string;
+  karigar_outstanding_fine: string;
+  total_workshop_gold_fine: string;
+  total_issues_today_gross: string;
+  total_receipts_today_gross: string;
+  total_wastage_today_gross: string;
+  loss_alerts_count: number;
+}
+
+export interface InventoryItem {
+  id: number;
+  lot_code: string;
+  category: string;
+  description: string;
+  gross_weight: string;
+  purity_percent: string;
+  fine_weight: string;
+  location: string;
+  updated_at: string;
+}
+
