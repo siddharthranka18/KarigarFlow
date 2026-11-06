@@ -86,9 +86,16 @@ def create_transaction(
     ]:
         if not payload.karigar_id:
             raise HTTPException(status_code=400, detail="karigar_id is required for workshop slips")
-        karigar = db.query(Karigar).filter(Karigar.id == payload.karigar_id).first()
+        # Serialize custody changes for the same craftsman until commit/rollback.
+        karigar = db.query(Karigar).filter(Karigar.id == payload.karigar_id).with_for_update().first()
         if not karigar:
             raise HTTPException(status_code=404, detail="Karigar not found")
+
+    # A concurrent retry may have finished while we waited for the custody lock.
+    if idemp_key:
+        existing_tx = db.query(GoldTransaction).filter(GoldTransaction.idempotency_key == idemp_key).first()
+        if existing_tx:
+            return existing_tx
 
     # 3. Safe decimal calculations
     net_weight = calculate_net_weight(payload.gross_weight, payload.stone_weight)
@@ -96,6 +103,16 @@ def create_transaction(
         raise HTTPException(status_code=400, detail="Net gold weight must be strictly greater than 0")
 
     fine_weight = calculate_fine_gold(net_weight, payload.purity_percent)
+
+    allowed_pct = payload.allowed_wastage_percent or Decimal("0.00")
+    actual_wastage = payload.actual_wastage_weight or Decimal("0.000")
+    allowed_wastage_weight = round_weight((payload.gross_weight * allowed_pct) / Decimal("100.00"))
+    legitimate_wastage = (
+        min(actual_wastage, allowed_wastage_weight)
+        if payload.transaction_type == TransactionType.RECEIPT_ORNAMENT.value
+        else Decimal("0.000")
+    )
+    wastage_fine = calculate_fine_gold(legitimate_wastage, payload.purity_percent)
 
     # 4. Validate sufficient balance on receipts
     if karigar and payload.transaction_type in [
@@ -127,16 +144,14 @@ def create_transaction(
             validate_transaction_balance(
                 current_gross_balance=current_bal.closing_balance_gross,
                 transaction_type=payload.transaction_type,
-                transaction_gross_weight=payload.gross_weight
+                transaction_gross_weight=payload.gross_weight + legitimate_wastage
             )
+            if fine_weight + wastage_fine > current_bal.closing_balance_fine:
+                raise ValueError("Receipt and approved wastage exceed available fine gold balance")
         except ValueError as err:
             raise HTTPException(status_code=400, detail=str(err))
 
     # 5. Wastage and loss alert logic
-    allowed_pct = payload.allowed_wastage_percent or Decimal("0.00")
-    actual_wastage = payload.actual_wastage_weight or Decimal("0.000")
-    
-    allowed_wastage_weight = round_weight((payload.gross_weight * allowed_pct) / Decimal("100.00"))
     wastage_variance = round_weight(actual_wastage - allowed_wastage_weight)
 
     is_alert = False
@@ -182,24 +197,12 @@ def create_transaction(
         notes=payload.notes
     )
 
-    try:
-        db.add(tx)
-        db.commit()
-        db.refresh(tx)
-    except IntegrityError:
-        db.rollback()
-        # In case of concurrent race condition on idempotency_key
-        if idemp_key:
-            existing_tx = db.query(GoldTransaction).filter(GoldTransaction.idempotency_key == idemp_key).first()
-            if existing_tx:
-                return existing_tx
-        raise HTTPException(status_code=400, detail="Database integrity constraint violation")
+    db.add(tx)
 
     # 7. Auditable Wastage Accounting:
     # If this is a finished jewellery receipt reporting legitimate wastage,
     # generate an explicit, linked WASTAGE_SETTLEMENT slip in the transaction history
     if payload.transaction_type == TransactionType.RECEIPT_ORNAMENT.value and actual_wastage > Decimal("0.000"):
-        legitimate_wastage = min(actual_wastage, allowed_wastage_weight)
         if legitimate_wastage > Decimal("0.000"):
             wst_uuid = str(uuid.uuid4())[:5].upper()
             wst_slip = f"WST-{date_str}-{wst_uuid}"
@@ -224,7 +227,21 @@ def create_transaction(
                 notes=f"Auditable craft wastage settlement linked to parent slip {tx.slip_number}"
             )
             db.add(wastage_tx)
-            db.commit()
+
+    # Receipt and settlement form one accounting operation: both save or neither.
+    try:
+        db.commit()
+        db.refresh(tx)
+    except IntegrityError:
+        db.rollback()
+        if idemp_key:
+            existing_tx = db.query(GoldTransaction).filter(GoldTransaction.idempotency_key == idemp_key).first()
+            if existing_tx:
+                return existing_tx
+        raise HTTPException(status_code=400, detail="Database integrity constraint violation")
+    except Exception:
+        db.rollback()
+        raise
 
     return tx
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/Table';
@@ -19,6 +19,7 @@ export const Transactions: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('ALL');
   const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);
   const [inspectedId, setInspectedId] = useState<number | null>(null);
+  const submission = useRef<{ fingerprint: string; key: string } | null>(null);
 
   // Form states
   const [slipType, setSlipType] = useState<TransactionType>('ISSUE');
@@ -84,6 +85,7 @@ export const Transactions: React.FC = () => {
     setScaleReadingConfirmed(true);
     setNotes('');
     setFormError(null);
+    submission.current = null;
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -95,7 +97,9 @@ export const Transactions: React.FC = () => {
       return;
     }
 
-    createMutation.mutate({
+    if (createMutation.isPending) return;
+
+    const payload = {
       transaction_type: slipType,
       karigar_id: parseInt(karigarId, 10),
       item_description: itemDescription.trim(),
@@ -105,9 +109,13 @@ export const Transactions: React.FC = () => {
       allowed_wastage_percent: parseFloat(allowedWastagePercent),
       actual_wastage_weight: parseFloat(actualWastageWeight),
       scale_reading_confirmed: scaleReadingConfirmed,
-      idempotency_key: crypto.randomUUID(),
       notes: notes.trim(),
-    });
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (submission.current?.fingerprint !== fingerprint) {
+      submission.current = { fingerprint, key: crypto.randomUUID() };
+    }
+    createMutation.mutate({ ...payload, idempotency_key: submission.current.key });
   };
 
   return (
