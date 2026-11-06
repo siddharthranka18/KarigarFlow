@@ -61,6 +61,11 @@ export interface GoldTransaction {
   created_at: string;
 }
 
+export interface LossAlertRecord {
+  alert: GoldTransaction;
+  resolution: GoldTransaction | null;
+}
+
 export interface TransactionDetail {
   transaction: GoldTransaction;
   recorded_by_name: string | null;

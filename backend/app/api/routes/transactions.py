@@ -22,6 +22,7 @@ from app.services.gold_calculations import (
     round_weight
 )
 from app.services.inventory_service import compute_vault_custody_position
+from app.services.loss_alerts import unresolved_loss_conditions
 from app.core.config import settings
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -50,7 +51,7 @@ def list_transactions(
         query = query.filter(GoldTransaction.transaction_type == transaction_type)
 
     if loss_alerts_only:
-        query = query.filter(GoldTransaction.is_loss_alert == True)
+        query = query.filter(*unresolved_loss_conditions())
 
     return query.order_by(GoldTransaction.created_at.desc()).limit(limit).all()
 
@@ -66,6 +67,11 @@ def create_transaction(
         UserRole.ISSUE_CLERK.value
     ]))
 ):
+    if payload.transaction_type not in {'ISSUE', 'RECEIPT_ORNAMENT', 'RECEIPT_SCRAP', 'RECEIPT_DUST', 'PURCHASE'}:
+        raise HTTPException(status_code=400, detail='This transaction type requires its dedicated approval workflow')
+    if any(key and key.startswith('loss-resolution:') for key in (idempotency_key_header, payload.idempotency_key)):
+        raise HTTPException(status_code=400, detail='Reserved idempotency key')
+
     # 1. Idempotency Check: prevent duplicate accounting entries on retries
     idemp_key = idempotency_key_header or payload.idempotency_key
     if idemp_key:
@@ -222,7 +228,7 @@ def create_transaction(
                 allowed_wastage_percent=allowed_pct,
                 actual_wastage_weight=actual_wastage,
                 wastage_variance_weight=wastage_variance,
-                is_loss_alert=is_alert,
+                is_loss_alert=False,
                 scale_reading_confirmed=True,
                 notes=f"Auditable craft wastage settlement linked to parent slip {tx.slip_number}"
             )
@@ -338,9 +344,9 @@ def get_daily_stock_summary(
     )
 
     today_wastage_reported_gross = sum((Decimal(str(tx.actual_wastage_weight or 0)) for tx in today_txs if tx.transaction_type == TransactionType.RECEIPT_ORNAMENT.value), Decimal("0.000"))
-    today_excess_wastage_gross = sum((Decimal(str(tx.wastage_variance_weight or 0)) for tx in today_txs if tx.is_loss_alert), Decimal("0.000"))
+    today_excess_wastage_gross = sum((Decimal(str(tx.wastage_variance_weight or 0)) for tx in today_txs if tx.is_loss_alert and tx.transaction_type == 'RECEIPT_ORNAMENT'), Decimal("0.000"))
     
-    total_loss_alerts_count = db.query(GoldTransaction).filter(GoldTransaction.is_loss_alert == True).count()
+    total_loss_alerts_count = db.query(GoldTransaction).filter(*unresolved_loss_conditions()).count()
 
     return DailyStockSummary(
         date=date.today().isoformat(),

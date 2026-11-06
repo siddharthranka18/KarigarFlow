@@ -86,13 +86,15 @@ def test_controlled_vault_karigar_wastage_lifecycle(client, clerk_token, finance
     assert Decimal(str(k1_after_issue["current_balance_gross"])) == Decimal("145.250")
     assert Decimal(str(k1_after_issue["current_balance_fine"])) == Decimal("133.049")
 
-    # Step 3: Receipt 95.000g ornament
+    # Steps 3–4 save the ornament receipt and generated settlement atomically.
     rcpt_ornament_payload = {
         "karigar_id": 1,
         "transaction_type": "RECEIPT_ORNAMENT",
         "gross_weight": "95.000",
         "purity_percent": "91.60",
         "item_description": "Finished necklace received",
+        "allowed_wastage_percent": "2.00",
+        "actual_wastage_weight": "1.900",
         "idempotency_key": "IDEMP-AUDIT-RCPT-ORNAMENT-95G"
     }
     res = client.post("/api/transactions", json=rcpt_ornament_payload, headers=headers)
@@ -102,21 +104,20 @@ def test_controlled_vault_karigar_wastage_lifecycle(client, clerk_token, finance
     pos_after_ornament = compute_vault_custody_position(test_db)
     assert pos_after_ornament.closing_central_vault_fine == Decimal("1406.620")
 
-    k1_after_ornament = client.get("/api/karigars/1", headers=headers).json()
-    assert Decimal(str(k1_after_ornament["current_balance_gross"])) == Decimal("50.250")
-    assert Decimal(str(k1_after_ornament["current_balance_fine"])) == Decimal("46.029")
-
-    # Step 4: Settle Wastage 1.900g (Approved craft consumption)
-    wastage_payload = {
-        "karigar_id": 1,
-        "transaction_type": "WASTAGE_SETTLEMENT",
-        "gross_weight": "1.900",
-        "purity_percent": "91.60",
-        "item_description": "Approved wastage settlement for 95g ornament batch",
-        "idempotency_key": "IDEMP-AUDIT-WASTAGE-1.9G"
-    }
-    res = client.post("/api/transactions", json=wastage_payload, headers=admin_headers)
-    assert res.status_code == 201, res.text
+    # Settlement comes from the receipt, never an arbitrary manual deduction.
+    settlements = test_db.query(GoldTransaction).filter(
+        GoldTransaction.transaction_type == 'WASTAGE_SETTLEMENT',
+        GoldTransaction.related_slip_number == res.json()['slip_number'],
+    ).all()
+    assert len(settlements) == 1
+    assert settlements[0].gross_weight == Decimal('1.900')
+    assert settlements[0].fine_weight == Decimal('1.740')
+    manual = client.post('/api/transactions', headers=admin_headers, json={
+        'transaction_type': 'WASTAGE_SETTLEMENT', 'karigar_id': 1,
+        'gross_weight': '1.900', 'purity_percent': '91.60',
+        'item_description': 'Manual deduction must be rejected',
+    })
+    assert manual.status_code == 400
 
     # Verify after Wastage Settlement
     pos_after_wastage = compute_vault_custody_position(test_db)

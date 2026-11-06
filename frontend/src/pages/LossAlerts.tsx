@@ -1,124 +1,105 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
-import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/Table';
-import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
+import { AlertBanner } from '../components/ui/AlertBanner';
+import { SlipInspection } from '../components/SlipInspection';
 import { formatWeight, formatPurity, formatDateTime } from '../utils/formatters';
-import { AlertTriangle, ShieldCheck, Scale, Info } from 'lucide-react';
+import { useAuth } from '../features/auth/AuthContext';
+import { GoldTransaction } from '../types';
 
-export const LossAlerts: React.FC = () => {
-  const { data: alerts, isLoading } = useQuery({
-    queryKey: ['loss-alerts'],
-    queryFn: () => api.getTransactions({ loss_alerts_only: true }),
+export function LossAlerts() {
+  const { isFinanceHead, isKarigar } = useAuth();
+  const cache = useQueryClient();
+  const [status, setStatus] = useState<'open' | 'resolved'>('open');
+  const [selected, setSelected] = useState<GoldTransaction | null>(null);
+  const [inspected, setInspected] = useState<number | null>(null);
+  const [notes, setNotes] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [approvedSlip, setApprovedSlip] = useState<string | null>(null);
+  const alerts = useQuery({
+    queryKey: ['loss-alerts', status], queryFn: () => api.getLossAlerts(status), enabled: !isKarigar,
+  });
+  const review = useMutation({
+    mutationFn: ({ id, text }: { id: number; text: string }) => api.writeOffLoss(id, text),
+    onSuccess: adjustment => {
+      for (const key of ['loss-alerts', 'recent-loss-alerts', 'transactions', 'recent-transactions', 'transaction-detail', 'daily-summary', 'daily-summary-badge', 'karigars', 'stock-statement']) {
+        cache.invalidateQueries({ queryKey: [key] });
+      }
+      setSelected(null);
+      setApprovedSlip(adjustment.slip_number);
+    },
   });
 
-  const { data: karigars } = useQuery({
-    queryKey: ['karigars'],
-    queryFn: () => api.getKarigars(),
-  });
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="border-b border-parchment-300 pb-4">
-        <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
-          Loss & Wastage Discrepancy Audits
-        </h2>
-        <p className="text-xs text-charcoal-600 mt-0.5">
-          Automatic flags triggered whenever actual craft wastage exceeds allowed job tolerance by &gt; 0.100 grams.
-        </p>
-      </div>
-
-      {/* Explanation Banner */}
-      <div className="bg-white border border-parchment-300 rounded-sm p-4 shadow-subtle flex items-start gap-3">
-        <Info className="w-5 h-5 text-brass-700 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-charcoal-700 space-y-1">
-          <p className="font-semibold text-charcoal-900">Coimbatore Workshop Wastage Governance Rule:</p>
-          <p>
-            Gold issued for fabrication has a benchmark allowed wastage (typically 1.80% - 2.50% depending on ornamentation complexity). 
-            When ornaments, scrap, and filings are returned, any negative variance exceeding <strong>100 milligrams (0.100 g)</strong> automatically triggers a Loss Alert for physical bench sweep and audit before settling the karigar slip.
-          </p>
-        </div>
-      </div>
-
-      {/* Loss Alerts Table */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-charcoal-900 uppercase tracking-wider flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-status-danger" />
-            Flagged Transactions ({alerts?.length || 0})
-          </h3>
-        </div>
-
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>Slip #</TableHeaderCell>
-              <TableHeaderCell>Karigar</TableHeaderCell>
-              <TableHeaderCell>Job Order / Item</TableHeaderCell>
-              <TableHeaderCell align="right">Gross Issued</TableHeaderCell>
-              <TableHeaderCell align="right">Allowed Wastage</TableHeaderCell>
-              <TableHeaderCell align="right">Actual Wastage</TableHeaderCell>
-              <TableHeaderCell align="right">Loss Variance</TableHeaderCell>
-              <TableHeaderCell align="center">Scale Check</TableHeaderCell>
-              <TableHeaderCell>Date Flagged</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell className="text-center py-6 text-charcoal-500" align="center">
-                  Scanning ledger for wastage anomalies...
-                </TableCell>
-              </TableRow>
-            ) : alerts && alerts.length > 0 ? (
-              alerts.map((tx) => (
-                <TableRow key={tx.id} isLossAlert={true}>
-                  <TableCell>
-                    <span className="font-mono text-xs font-bold text-status-danger">{tx.slip_number}</span>
-                  </TableCell>
-                  <TableCell className="text-xs font-semibold text-charcoal-900">
-                    {karigars?.find((k) => k.id === tx.karigar_id)?.name || `Karigar #${tx.karigar_id}`}
-                  </TableCell>
-                  <TableCell className="text-xs text-charcoal-700">{tx.item_description}</TableCell>
-                  <TableCell align="right" isNumeric className="font-semibold text-charcoal-900">
-                    {formatWeight(tx.gross_weight)}
-                  </TableCell>
-                  <TableCell align="right" isNumeric className="text-xs text-charcoal-600">
-                    {formatPurity(tx.allowed_wastage_percent)}
-                  </TableCell>
-                  <TableCell align="right" isNumeric className="font-semibold text-status-danger">
-                    {formatWeight(tx.actual_wastage_weight)}
-                  </TableCell>
-                  <TableCell align="right" isNumeric className="font-mono font-bold text-status-danger text-sm">
-                    +{formatWeight(tx.wastage_variance_weight)}
-                  </TableCell>
-                  <TableCell align="center">
-                    <Badge variant="brass" size="sm" icon={<Scale className="w-3 h-3" />}>
-                      CONFIRMED
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-[11px] text-charcoal-500">
-                    {formatDateTime(tx.created_at)}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell className="text-center py-8 text-charcoal-500" align="center">
-                  <div className="flex flex-col items-center gap-2">
-                    <ShieldCheck className="w-8 h-8 text-status-success" />
-                    <span className="font-semibold text-charcoal-800">No Wastage Loss Discrepancies</span>
-                    <span className="text-xs text-charcoal-500">
-                      All settled slips are strictly within allowed workshop tolerances.
-                    </span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+  if (isKarigar) return <AlertBanner type="danger" message="Company loss reviews are available to workshop staff only." />;
+  return <div className="space-y-5">
+    <div className="border-b border-parchment-300 pb-4">
+      <h2 className="text-xl font-serif font-bold text-charcoal-900">Loss & Wastage Reviews</h2>
+      <p className="text-xs text-charcoal-600 mt-1">Investigate excess wastage before approving any accounting write-off.</p>
     </div>
-  );
-};
+    <AlertBanner type="info" message="Demo policy: Finance may write off the full flagged excess after investigation. This reduces karigar liability and company gold; it does not return gold to the vault. Recovered gold must be recorded as a physical receipt instead. Partial and cash settlements are not supported here." />
+    {approvedSlip && <div role="status"><AlertBanner type="success" message={`Write-off saved as ${approvedSlip}. See Approved write-offs for the decision and investigation notes.`} /></div>}
+    <div className="flex flex-wrap gap-2">
+      {(['open', 'resolved'] as const).map(value => <Button key={value} size="sm"
+        variant={status === value ? 'primary' : 'secondary'} onClick={() => setStatus(value)}>
+        {value === 'open' ? 'Open reviews' : 'Approved write-offs'}
+      </Button>)}
+      <Button variant="ghost" size="sm" disabled={alerts.isFetching} onClick={() => alerts.refetch()}>Refresh</Button>
+    </div>
+    {alerts.isLoading && <p role="status" className="text-sm text-charcoal-600">Loading loss reviews…</p>}
+    {alerts.isError && <div role="alert"><AlertBanner type="danger" message="Loss reviews could not be loaded. Refresh to try again." /></div>}
+    {!alerts.isError && alerts.data?.length === 0 && <div className="ledger-card p-6 text-sm text-charcoal-600">
+      {status === 'open' ? 'No open loss reviews recorded.' : 'No approved write-offs recorded.'}
+    </div>}
+    {!alerts.isError && alerts.data?.map(({ alert: tx, resolution }) => <article key={tx.id} className="ledger-card p-4 space-y-3">
+      <div className="flex flex-wrap justify-between items-start gap-3">
+        <div>
+          <button className="text-sm font-mono font-bold text-brass-800 underline" onClick={() => setInspected(tx.id)}>{tx.slip_number}</button>
+          <p className="text-xs text-charcoal-600 mt-1">{tx.karigar_name || `Karigar #${tx.karigar_id}`} · {formatDateTime(tx.created_at)}</p>
+        </div>
+        <span className="text-xs font-semibold text-charcoal-700">{resolution ? 'Write-off approved' : 'Awaiting investigation'}</span>
+      </div>
+      <p className="text-sm text-charcoal-800 break-words">{tx.item_description}</p>
+      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        {[
+          ['Receipt gross', formatWeight(tx.gross_weight)],
+          ['Reported wastage', formatWeight(tx.actual_wastage_weight)],
+          ['Excess to review', formatWeight(tx.wastage_variance_weight)],
+          ['Scale check', tx.scale_reading_confirmed ? 'Recorded as confirmed' : 'Unconfirmed'],
+        ].map(([label, value]) => <div key={label}><dt className="text-charcoal-600">{label}</dt><dd className="font-mono font-semibold mt-1">{value}</dd></div>)}
+      </dl>
+      {resolution ? <div className="border-t border-parchment-200 pt-3 text-xs space-y-2">
+        <button className="text-brass-800 underline font-mono" onClick={() => setInspected(resolution.id)}>Inspect adjustment {resolution.slip_number}</button>
+        <p>{formatWeight(resolution.gross_weight)} gross / {formatWeight(resolution.fine_weight)} fine written off · {formatDateTime(resolution.created_at)}</p>
+        <p className="whitespace-pre-wrap break-words">Investigation: {resolution.notes}</p>
+      </div> : isFinanceHead ? <Button size="sm" variant="secondary" onClick={() => {
+        review.reset(); setNotes(''); setConfirmed(false); setSelected(tx);
+      }}>Review write-off</Button> : <p className="text-xs text-charcoal-500">Only Finance can approve a write-off.</p>}
+    </article>)}
+    {alerts.data && alerts.data.length >= 100 && <p className="text-xs text-charcoal-600">Showing the latest 100 reviews in this category.</p>}
+    {selected && <Modal isOpen onClose={() => { if (!review.isPending) setSelected(null); }} title={`Review ${selected.slip_number}`} subtitle="Finance approval creates an auditable loss-adjustment slip.">
+      <AlertBanner type="warning" message={`Write off ${formatWeight(selected.wastage_variance_weight)} excess at ${formatPurity(selected.purity_percent)} purity. Confirm that the bench investigation is complete and this amount has not been recovered or settled elsewhere.`} />
+      <form className="space-y-4" onSubmit={e => {
+        e.preventDefault();
+        if (confirmed && !review.isPending) review.mutate({ id: selected.id, text: notes.trim() });
+      }}>
+        <label className="block text-xs font-semibold text-charcoal-700">Investigation findings (10–2000 characters)
+          <textarea required minLength={10} maxLength={2000} value={notes} disabled={review.isPending}
+            onChange={e => setNotes(e.target.value)} rows={4}
+            className="block w-full mt-2 border border-parchment-300 p-2 text-sm rounded-sm" />
+        </label>
+        <label className="flex items-start gap-2 text-xs text-charcoal-700">
+          <input type="checkbox" checked={confirmed} disabled={review.isPending} onChange={e => setConfirmed(e.target.checked)} required />
+          I approve this exact excess as a company loss after investigation. No physical gold is returned by this action.
+        </label>
+        {review.isError && <div role="alert"><AlertBanner type="danger" message={review.error.message || 'Approval failed. Retry the unchanged review safely.'} /></div>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" disabled={review.isPending} onClick={() => setSelected(null)}>Cancel</Button>
+          <Button type="submit" variant="danger" disabled={!confirmed || notes.trim().length < 10 || review.isPending} isLoading={review.isPending}>Approve write-off</Button>
+        </div>
+      </form>
+    </Modal>}
+    {inspected !== null && <SlipInspection id={inspected} onClose={() => setInspected(null)} onNavigate={setInspected} />}
+  </div>;
+}

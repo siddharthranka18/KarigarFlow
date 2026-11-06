@@ -14,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
-from app.api.routes import health, auth, karigars, transactions, inventory, transaction_details, stock_statement
+from app.api.routes import health, auth, karigars, transactions, inventory, transaction_details, stock_statement, loss_alerts
 from app.models.user import User, UserRole
 from app.models.karigar import Karigar
 from app.models.inventory import GoldInventory
@@ -149,6 +149,7 @@ app.include_router(karigars.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
 app.include_router(transaction_details.router, prefix="/api")
 app.include_router(stock_statement.router, prefix="/api")
+app.include_router(loss_alerts.router, prefix="/api")
 app.include_router(inventory.router, prefix="/api")
 
 @app.get("/")

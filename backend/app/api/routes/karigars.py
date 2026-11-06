@@ -9,6 +9,7 @@ from app.models.user import User, UserRole
 from app.schemas.karigar import KarigarCreate, KarigarUpdate, KarigarResponse, KarigarWithBalance
 from app.api.dependencies import get_current_user, require_roles
 from app.services.gold_calculations import compute_karigar_balance, round_weight
+from app.services.loss_alerts import unresolved_loss_conditions
 
 router = APIRouter(prefix="/karigars", tags=["Karigars"])
 
@@ -32,7 +33,7 @@ def enrich_karigar_balance(karigar: Karigar, db: Session) -> KarigarWithBalance:
 
     loss_alerts_count = db.query(GoldTransaction).filter(
         GoldTransaction.karigar_id == karigar.id,
-        GoldTransaction.is_loss_alert == True
+        *unresolved_loss_conditions()
     ).count()
 
     balance = compute_karigar_balance(

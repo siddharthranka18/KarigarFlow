@@ -1,4 +1,4 @@
-import { Karigar, GoldTransaction, TransactionDetail, DailyStockSummary, InventoryItem, StockStatement } from '../types';
+import { Karigar, GoldTransaction, TransactionDetail, DailyStockSummary, InventoryItem, StockStatement, LossAlertRecord } from '../types';
 
 const API_BASE = '/api';
 
@@ -116,6 +116,16 @@ class ApiClient {
 
   async getStockStatement(date: string): Promise<StockStatement> {
     return this.request(`/stock-statement?statement_date=${encodeURIComponent(date)}`);
+  }
+
+  async getLossAlerts(status: 'open' | 'resolved'): Promise<LossAlertRecord[]> {
+    return this.request(`/loss-alerts?status=${status}`);
+  }
+
+  async writeOffLoss(id: number, investigation_notes: string): Promise<GoldTransaction> {
+    return this.request(`/loss-alerts/${id}/write-off`, {
+      method: 'POST', body: JSON.stringify({ investigation_notes, confirm_write_off: true }),
+    });
   }
 
   // Inventory

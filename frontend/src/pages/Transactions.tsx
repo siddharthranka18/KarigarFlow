@@ -66,6 +66,7 @@ export const Transactions: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['karigars'] });
       queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
       queryClient.invalidateQueries({ queryKey: ['stock-statement'] });
+      queryClient.invalidateQueries({ queryKey: ['loss-alerts'] });
       setIsSlipModalOpen(false);
       resetForm();
     },
