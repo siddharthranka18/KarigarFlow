@@ -11,12 +11,14 @@ import { formatWeight, formatPurity, formatDateTime } from '../utils/formatters'
 import { useAuth } from '../features/auth/AuthContext';
 import { FilePlus, Camera, CheckCircle2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { TransactionType } from '../types';
+import { SlipInspection } from '../components/SlipInspection';
 
 export const Transactions: React.FC = () => {
   const queryClient = useQueryClient();
   const { isKarigar } = useAuth();
   const [filterType, setFilterType] = useState<string>('ALL');
   const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);
+  const [inspectedId, setInspectedId] = useState<number | null>(null);
 
   // Form states
   const [slipType, setSlipType] = useState<TransactionType>('ISSUE');
@@ -36,7 +38,7 @@ export const Transactions: React.FC = () => {
     queryFn: () => api.getKarigars(),
   });
 
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions, isLoading, isError, refetch } = useQuery({
     queryKey: ['transactions', filterType],
     queryFn: () =>
       api.getTransactions(filterType === 'ALL' ? undefined : { transaction_type: filterType }),
@@ -134,7 +136,7 @@ export const Transactions: React.FC = () => {
       </div>
 
       {/* Type Filters */}
-      <div className="flex items-center gap-2 border-b border-parchment-200 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-parchment-200 pb-3">
         {['ALL', 'ISSUE', 'RECEIPT_ORNAMENT', 'RECEIPT_SCRAP', 'RECEIPT_DUST'].map((t) => (
           <button
             key={t}
@@ -151,6 +153,10 @@ export const Transactions: React.FC = () => {
       </div>
 
       {/* Transactions Table */}
+      {isError && <div role="alert" className="space-y-2">
+        <AlertBanner type="danger" message="The slip register could not be loaded." />
+        <Button size="sm" onClick={() => refetch()}>Try again</Button>
+      </div>}
       <Table>
         <TableHead>
           <TableRow>
@@ -177,7 +183,8 @@ export const Transactions: React.FC = () => {
             transactions.map((tx) => (
               <TableRow key={tx.id} isLossAlert={tx.is_loss_alert}>
                 <TableCell>
-                  <span className="font-mono text-xs font-semibold text-charcoal-900">{tx.slip_number}</span>
+                  <button onClick={() => setInspectedId(tx.id)} aria-label={`Inspect slip ${tx.slip_number}`}
+                    className="font-mono text-xs font-semibold text-brass-800 underline underline-offset-4 hover:text-brass-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brass-600">{tx.slip_number}</button>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
@@ -237,12 +244,14 @@ export const Transactions: React.FC = () => {
           ) : (
             <TableRow>
               <TableCell className="text-center py-6 text-charcoal-500" align="center">
-                No slips match the selected filter.
+                {isError ? 'Slip register unavailable.' : 'No slips match the selected filter.'}
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
+
+      {inspectedId !== null && <SlipInspection id={inspectedId} onClose={() => setInspectedId(null)} onNavigate={setInspectedId} />}
 
       {/* Create New Gold Slip Modal */}
       <Modal

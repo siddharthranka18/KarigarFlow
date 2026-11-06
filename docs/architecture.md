@@ -131,3 +131,36 @@ The application maintains a strict taxonomy to separate parameters explicitly pr
 │ created_at (DATETIME)                                       │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 7. Perpetual Vault Inventory & Physical Gold Conservation
+
+### 7.1 Location-Level Custody Accounting
+To prevent gold from disappearing or being double-counted across physical custody transitions, the system enforces perpetual location accounting across three primary custody centers:
+1. **Central Strongroom Vault:**
+   $$\text{Closing Vault Fine} = \text{Opening Vault Fine} - \sum \text{Fine Issued} + \sum \text{Fine Physically Returned} + \sum \text{Purchases Fine}$$
+2. **Karigar Bench Custody:**
+   $$\text{Closing Karigar Fine} = \text{Opening Karigar Fine} + \sum \text{Fine Issued} - \sum \text{Fine Physically Returned} - \sum \text{Settled Wastage Fine} - \sum \text{Loss Adjusted Fine}$$
+3. **Refinery Stock:**
+   $$\text{Closing Refinery Fine} = \text{Opening Refinery Fine} + \sum \text{Dispatches to Refinery Fine} - \sum \text{Returns from Refinery Fine}$$
+
+### 7.2 Total Physical Company Gold Conservation
+$$\mathbf{\text{Total Company Physical Fine Gold} = \text{Closing Central Vault Fine} + \text{Closing Refinery Fine} + \text{Closing Karigar Custody Fine}}$$
+
+Transfers between the central vault and karigar workbenches are strictly zero-sum ($\Delta = 0$). Total company physical gold changes **ONLY** upon:
+- Approved craft wastage consumption ($-\text{Settled Wastage Fine}$)
+- Write-offs or verified recoveries ($-\text{Loss Adjustments}$)
+- Outside bullion purchases ($+\text{Purchases Fine}$)
+
+---
+
+## 8. Test Database Isolation Architecture
+
+### 8.1 Zero-Mutation Guarantee
+Automated testing must never contaminate development or client demonstration environments. To guarantee absolute isolation:
+- `conftest.py` configures `TEST_DATABASE_URL = "postgresql+psycopg2://postgres@localhost:5433/karigarflow_test_db"`.
+- A hard assertion verifies that the target database is strictly `karigarflow_test_db`.
+- FastAPI's `get_db` dependency is overridden with `TestingSessionLocal` across all test requests.
+- An autouse fixture truncates and reseeds `karigarflow_test_db` deterministically prior to each test case.
+- Live database verification tests (`test_dev_database_isolation_safety`) confirm that running automated test suites causes zero row changes in `karigarflow_db`.

@@ -21,6 +21,7 @@ from app.services.gold_calculations import (
     validate_transaction_balance,
     round_weight
 )
+from app.services.inventory_service import compute_vault_custody_position
 from app.core.config import settings
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -245,21 +246,15 @@ def get_daily_stock_summary(
     - Legitimate Wastage Consumed Today
     - Excess Wastage Loss Alerts Requiring Investigation
     """
-    # 1. Vault gold from inventory: separate central strongroom from refinery stock
-    vault_items = db.query(GoldInventory).all()
-    refiner_items = [
-        item for item in vault_items 
-        if "refin" in (item.category or "").lower() or "refin" in (item.location or "").lower()
-    ]
-    central_items = [item for item in vault_items if item not in refiner_items]
-
-    refiner_gross = sum((Decimal(str(item.gross_weight)) for item in refiner_items), Decimal("0.000"))
-    refiner_fine = sum((Decimal(str(item.fine_weight)) for item in refiner_items), Decimal("0.000"))
-    central_gross = sum((Decimal(str(item.gross_weight)) for item in central_items), Decimal("0.000"))
-    central_fine = sum((Decimal(str(item.fine_weight)) for item in central_items), Decimal("0.000"))
-
-    vault_gross = central_gross + refiner_gross
-    vault_fine = central_fine + refiner_fine
+    # 1. Compute perpetual Central Vault & Refinery custody balances
+    # Enforces Invariant: Closing Vault Fine = Opening Vault Fine - Fine Issued + Fine Physically Returned + Purchases
+    vault_pos = compute_vault_custody_position(db)
+    central_gross = vault_pos.closing_central_vault_gross
+    central_fine = vault_pos.closing_central_vault_fine
+    refiner_gross = vault_pos.closing_refinery_gross
+    refiner_fine = vault_pos.closing_refinery_fine
+    vault_gross = round_weight(central_gross + refiner_gross)
+    vault_fine = round_weight(vault_pos.total_vault_and_refinery_fine)
 
     # 2. Karigar balances
     karigars = db.query(Karigar).filter(Karigar.is_active == True).all()

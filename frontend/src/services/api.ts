@@ -1,4 +1,4 @@
-import { Karigar, GoldTransaction, DailyStockSummary, InventoryItem } from '../types';
+import { Karigar, GoldTransaction, TransactionDetail, DailyStockSummary, InventoryItem } from '../types';
 
 const API_BASE = '/api';
 
@@ -104,6 +104,10 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async getTransaction(id: number): Promise<TransactionDetail> {
+    return this.request(`/transactions/${id}`);
   }
 
   async getDailySummary(): Promise<DailyStockSummary> {

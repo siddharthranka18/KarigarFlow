@@ -61,6 +61,13 @@ export interface GoldTransaction {
   created_at: string;
 }
 
+export interface TransactionDetail {
+  transaction: GoldTransaction;
+  recorded_by_name: string | null;
+  parent: GoldTransaction | null;
+  linked_entries: GoldTransaction[];
+}
+
 export interface DailyStockSummary {
   date: string;
   vault_raw_gold_gross: string;

@@ -45,6 +45,13 @@ class TransactionResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class TransactionDetail(BaseModel):
+    transaction: TransactionResponse
+    recorded_by_name: Optional[str] = None
+    parent: Optional[TransactionResponse] = None
+    linked_entries: list[TransactionResponse] = Field(default_factory=list)
+
+
 class DailyStockSummary(BaseModel):
     date: str
     vault_raw_gold_gross: Decimal
