@@ -137,7 +137,9 @@ Render's free web service sleeps after inactivity and free PostgreSQL expires
 30 days after creation. Arrange a review window or a persistent plan before
 relying on it. See https://render.com/docs/free. No paid resource is created by
 the local implementation. The Docker daemon was unavailable during local QA;
-the image build itself is not claimed as verified.
+the image built successfully in GitHub CI for implementation commit 5265aba:
+https://github.com/siddharthranka18/KarigarFlow/actions/runs/42276478796.
+This is build validation, not verification of a live hosted runtime.
 
 ## Environment variables (names only)
 

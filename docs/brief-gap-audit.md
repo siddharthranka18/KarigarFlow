@@ -28,7 +28,9 @@ External acceptance still needed: connect hosting and verify a live reviewer URL
 if deployment is desired; obtain real workshop photo trials and native Tamil
 acceptance; confirm business policies with the client. A Docker definition and
 Render Blueprint are provided, but the local Docker daemon was unavailable.
-CI is configured; consult its actual run rather than assuming it succeeded.
+GitHub CI passed for implementation commit 5265aba, including Docker image build:
+https://github.com/siddharthranka18/KarigarFlow/actions/runs/42276478796.
+No live hosted runtime is claimed.
 
 Deliberate cuts: optional old-gold/PAN/payment desk, Tally-specific integration,
 refinery transfer/assay workflow, period-close snapshots, partial/cash settlements,

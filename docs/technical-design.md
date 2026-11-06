@@ -132,7 +132,10 @@ dialogs have focus management, keyboard dismissal and accessible names.
 Validation on 7 November 2026: 67 backend tests and four production-build browser
 flows passed locally. The frontend production build passed. npm audit reported
 zero known vulnerabilities after updating affected packages. The GitHub
-repository was verified PUBLIC. Hosted deployment and remote CI are not claimed.
+repository was verified PUBLIC. GitHub Checks for implementation commit 5265aba
+also passed on Linux, including backend/browser checks and Docker image build:
+https://github.com/siddharthranka18/KarigarFlow/actions/runs/42276478796
+This verifies the build, not a live hosted deployment.
 
 Backend regression tests cover rounding, sample fidelity, custody conservation,
 atomicity, retries, competing requests, job limits, agreement snapshots, privacy,
@@ -172,9 +175,10 @@ from compilation. A synthetic OCR test is not a workshop-photo accuracy study.
 - A12: Users, inventory, trend history and test images are synthetic, apart from
   the supplied reference names/values. No real personal data is included.
 - A13: Client ROI figures and targets are assumptions, not measured savings.
-- A14: Hosting, Docker build, upload retention/quotas, proxy body limits, backups,
+- A14: Hosting, upload retention/quotas, proxy body limits, backups,
   distributed throttling and real-client hardening require deployment validation.
-  The local Docker daemon was unavailable; local single-server QA is distinct.
+  The local Docker daemon was unavailable; the image build passed in GitHub CI.
+  Hosted runtime acceptance is still distinct from build validation.
 
 ## What was cut and what comes next
 

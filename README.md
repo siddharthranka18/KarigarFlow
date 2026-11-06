@@ -46,8 +46,9 @@ automatically labelled loss. Use database/seed/scale-demo.png for a synthetic
 
 Validation includes 67 backend tests, four production-build browser flows,
 desktop/phone screenshots and a dependency audit. CI configuration repeats the
-checks with isolated PostgreSQL databases. See the latest check results before
-claiming CI has passed; local results do not establish hosted availability.
+checks with isolated PostgreSQL databases. [GitHub CI passed](https://github.com/siddharthranka18/KarigarFlow/actions/runs/42276478796)
+for implementation commit 5265aba, including the Docker image build. This does
+not establish hosted availability.
 
 ## Deployment and limits
 
