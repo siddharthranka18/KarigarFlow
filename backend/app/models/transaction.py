@@ -54,7 +54,8 @@ class GoldTransaction(Base):
     scale_image_url = Column(String(500), nullable=True)
 
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+    # Match the existing timestamp-without-time-zone column with explicit UTC.
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False, index=True)
 
     @property
     def karigar_name(self) -> Optional[str]:

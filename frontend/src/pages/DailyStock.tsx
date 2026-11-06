@@ -1,160 +1,99 @@
-import React from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Download, Printer } from 'lucide-react';
 import { api } from '../services/api';
-import { StatCard } from '../components/ui/StatCard';
-import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/Table';
-import { formatWeight, formatPurity, formatDateOnly } from '../utils/formatters';
-import { Coins, Vault, Users, Calendar, Printer } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { AlertBanner } from '../components/ui/AlertBanner';
+import { formatWeight, formatDateOnly } from '../utils/formatters';
+import { StockRow } from '../types';
 
-export const DailyStock: React.FC = () => {
-  const { data: summary } = useQuery({
-    queryKey: ['daily-summary'],
-    queryFn: () => api.getDailySummary(),
+const columns: { key: keyof Omit<StockRow, 'location' | 'unit'>; label: string }[] = [
+  { key: 'opening', label: 'Opening' }, { key: 'issues', label: 'Issues ±' },
+  { key: 'receipts', label: 'Returns ±' }, { key: 'purchases', label: 'Purchases +' },
+  { key: 'wastage', label: 'Wastage −' }, { key: 'loss_adjustments', label: 'Loss −' },
+  { key: 'closing', label: 'Closing' },
+];
+
+function workshopToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
+
+export function DailyStock() {
+  const [date, setDate] = useState(workshopToday);
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+    queryKey: ['stock-statement', date],
+    queryFn: () => api.getStockStatement(date),
+    enabled: Boolean(date),
   });
+  const ready = Boolean(data) && !isError && !isFetching;
 
-  const { data: inventory, isLoading: isInventoryLoading } = useQuery({
-    queryKey: ['inventory'],
-    queryFn: () => api.getInventory(),
-  });
+  function downloadCsv() {
+    if (!data || !ready) return;
+    // Export fixed labels and decimal strings, never free-text notes.
+    const records = [
+      ['Statement date', data.date, 'Timezone', data.timezone],
+      ['Synthetic demo data; reconstructed from opening baseline and ledger'],
+      ['Location', 'Weight basis (grams)', ...columns.map(c => c.label)],
+      ...data.rows.map(row => [row.location, row.unit, ...columns.map(c => row[c.key])]),
+    ];
+    const csv = records.map(row => row.map(value => `"${value.replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `karigarflow-stock-${data.date}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parchment-300 pb-4">
-        <div>
-          <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
-            Daily Gold Stock Statement & Vault Audit
-          </h2>
-          <p className="text-xs text-charcoal-600 mt-0.5">
-            Full physical and fine-gold reconciliation across central strongroom, bench stocks, and recovery.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => window.print()}
-            icon={<Printer className="w-3.5 h-3.5" />}
-          >
-            Print Stock Statement
-          </Button>
-        </div>
+  return <div className="stock-statement space-y-6">
+    <div className="flex flex-col sm:flex-row justify-between gap-4 border-b border-parchment-300 pb-4">
+      <div>
+        <h2 className="text-xl font-serif font-bold text-charcoal-900">Daily Gold Stock Statement</h2>
+        <p className="text-xs text-charcoal-600 mt-1">Opening custody + signed movements = closing custody. All weights in grams.</p>
       </div>
-
-      {/* Date and Summary Banner */}
-      <div className="bg-white border border-parchment-300 rounded-sm p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-subtle">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xs bg-brass-100 text-brass-800 flex items-center justify-center">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-mono uppercase text-charcoal-500 font-semibold">Statement Date</div>
-            <div className="text-sm font-serif font-bold text-charcoal-900">
-              {formatDateOnly(summary?.date || new Date().toISOString())}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6">
-          <div className="text-right">
-            <div className="text-[10px] font-mono uppercase text-charcoal-500">Total Workshop Fine Gold</div>
-            <div className="text-base font-mono font-bold text-brass-900">
-              {formatWeight(summary?.total_workshop_gold_fine)}
-            </div>
-          </div>
-          <div className="text-right border-l border-parchment-200 pl-6">
-            <div className="text-[10px] font-mono uppercase text-charcoal-500">Loss Alerts Logged</div>
-            <div className={`text-base font-mono font-bold ${summary && summary.loss_alerts_count > 0 ? 'text-status-danger' : 'text-status-success'}`}>
-              {summary?.loss_alerts_count || 0}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3 Pillars of Gold Accounting */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          title="1. Central Strongroom Vault"
-          value={formatWeight(summary?.vault_raw_gold_gross)}
-          fineGoldValue={formatWeight(summary?.vault_raw_gold_fine)}
-          subtitle="Physical bullion, casting grain, melting scrap"
-          icon={<Vault className="w-5 h-5 text-brass-700" />}
-        />
-
-        <StatCard
-          title="2. Outstanding In Karigar Hands"
-          value={formatWeight(summary?.karigar_outstanding_gross)}
-          fineGoldValue={formatWeight(summary?.karigar_outstanding_fine)}
-          subtitle="Work-in-progress on craftsman workbenches"
-          icon={<Users className="w-5 h-5 text-charcoal-600" />}
-        />
-
-        <StatCard
-          title="3. Legitimate Craft Wastage Settled"
-          value={formatWeight(summary?.total_legitimate_wastage_today_gross)}
-          fineGoldValue={formatWeight(summary?.total_legitimate_wastage_today_fine)}
-          subtitle="Auditable approved filing & craft burn loss"
-          badge={{ text: 'Audited', variant: 'default' }}
-          icon={<Coins className="w-5 h-5 text-brass-600" />}
-        />
-      </div>
-
-      {/* Breakdown: Vault Lots */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-charcoal-900 uppercase tracking-wider">
-          Central Vault Inventory Lots
-        </h3>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>Lot Code</TableHeaderCell>
-              <TableHeaderCell>Category</TableHeaderCell>
-              <TableHeaderCell>Description / Ingot Ref</TableHeaderCell>
-              <TableHeaderCell align="right">Gross Weight</TableHeaderCell>
-              <TableHeaderCell align="right">Purity %</TableHeaderCell>
-              <TableHeaderCell align="right">Fine Gold (Au)</TableHeaderCell>
-              <TableHeaderCell>Storage Location</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isInventoryLoading ? (
-              <TableRow>
-                <TableCell className="text-center py-4 text-charcoal-500" align="center">
-                  Loading vault inventory lots...
-                </TableCell>
-              </TableRow>
-            ) : inventory && inventory.length > 0 ? (
-              inventory.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <span className="font-mono text-xs font-semibold text-brass-800">{item.lot_code}</span>
-                  </TableCell>
-                  <TableCell className="text-xs font-medium text-charcoal-900">{item.category}</TableCell>
-                  <TableCell className="text-xs text-charcoal-700">{item.description}</TableCell>
-                  <TableCell align="right" isNumeric className="font-semibold text-charcoal-900">
-                    {formatWeight(item.gross_weight)}
-                  </TableCell>
-                  <TableCell align="right" isNumeric className="text-brass-800">
-                    {formatPurity(item.purity_percent)}
-                  </TableCell>
-                  <TableCell align="right" isNumeric className="font-bold text-brass-900">
-                    {formatWeight(item.fine_weight)}
-                  </TableCell>
-                  <TableCell className="text-xs text-charcoal-600">{item.location}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell className="text-center py-4 text-charcoal-500" align="center">
-                  No inventory lots registered.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+      <div className="statement-controls flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="secondary" disabled={!ready} onClick={downloadCsv} icon={<Download className="w-4 h-4" />}>Export CSV</Button>
+        <Button size="sm" variant="secondary" disabled={!ready} onClick={() => window.print()} icon={<Printer className="w-4 h-4" />}>Print</Button>
       </div>
     </div>
-  );
-};
+    <div className="statement-controls flex flex-wrap items-end gap-3">
+      <label className="text-xs font-semibold text-charcoal-700">Workshop date (India)
+        <input type="date" value={date} max={workshopToday()} onChange={e => setDate(e.target.value)}
+          className="block mt-1 rounded-sm border border-parchment-300 p-2 bg-white" />
+      </label>
+      <Button size="sm" variant="secondary" disabled={!date || isFetching} onClick={() => refetch()}>Refresh</Button>
+    </div>
+    {!date && <p role="status" className="text-sm text-charcoal-600">Choose a date to load the statement.</p>}
+    {date && isLoading && <p role="status" className="text-sm text-charcoal-600">Loading opening balances and daily movements…</p>}
+    {isError && <div role="alert"><AlertBanner type="danger" message="The stock statement could not be loaded. Check the date and connection, then refresh. Export and print are disabled." /></div>}
+    {data && !isError && <>
+      <div className="bg-white border border-parchment-300 p-4 space-y-2">
+        <p className="font-serif font-bold text-charcoal-900">{formatDateOnly(data.date)} · {data.timezone}</p>
+        <p className="text-xs text-charcoal-600">{data.transaction_count} ledger entries on this date, including generated settlements. Today's closing is as recorded so far.</p>
+        {isFetching && <p role="status" className="text-xs text-brass-800">Refreshing statement…</p>}
+        {data.transaction_count === 0 && <p className="text-xs text-charcoal-600">No movements recorded. Closing balances carry forward from opening.</p>}
+      </div>
+      <div className="statement-table overflow-x-auto border border-parchment-300 bg-white">
+        <table className="w-full text-xs text-left">
+          <caption className="sr-only">Daily custody reconciliation, signed gram movements</caption>
+          <thead className="bg-parchment-100"><tr>
+            <th scope="col" className="p-3">Custody / basis</th>
+            {columns.map(c => <th scope="col" key={c.key} className="p-3 text-right whitespace-nowrap">{c.label}</th>)}
+          </tr></thead>
+          <tbody>{data.rows.map(row => <tr key={`${row.location}-${row.unit}`}
+            className={`border-t border-parchment-200 ${row.location === 'Company total' ? 'bg-brass-50 font-semibold' : ''}`}>
+            <th scope="row" className="p-3 whitespace-nowrap font-medium">{row.location}<span className="block text-[10px] text-charcoal-500 uppercase">{row.unit} gold</span></th>
+            {columns.map(c => <td key={c.key} className={`p-3 text-right font-mono whitespace-nowrap ${c.key === 'closing' ? 'font-bold text-brass-900' : ''}`}>{formatWeight(row[c.key])}</td>)}
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <div className="text-xs text-charcoal-600 space-y-2">
+        <p>Issues transfer custody from vault to karigar; physical returns reverse it. Company totals cancel these internal movements. Approved wastage and loss adjustments reduce company stock.</p>
+        <p>Synthetic demo data. Opening lots and karigar balances are assumed to precede ledger history. This is a reconstructed ledger statement, not a signed physical stock count.</p>
+        <p>Refinery classification uses existing lot categories and locations. Refinery transfers are not implemented. Historical statements change if opening baselines are edited.</p>
+      </div>
+    </>}
+  </div>;
+}

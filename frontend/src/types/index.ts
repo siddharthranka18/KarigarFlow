@@ -92,6 +92,25 @@ export interface DailyStockSummary {
   pending_reconciliations_count?: number;
 }
 
+export interface StockRow {
+  location: string;
+  unit: 'gross' | 'fine';
+  opening: string;
+  issues: string;
+  receipts: string;
+  purchases: string;
+  wastage: string;
+  loss_adjustments: string;
+  closing: string;
+}
+
+export interface StockStatement {
+  date: string;
+  timezone: string;
+  transaction_count: number;
+  rows: StockRow[];
+}
+
 export interface InventoryItem {
   id: number;
   lot_code: string;
