@@ -16,8 +16,7 @@ def stock_statement(
     statement_date: date | None = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles([
-        UserRole.ADMIN.value, UserRole.FINANCE_HEAD.value,
-        UserRole.WORKSHOP_MANAGER.value, UserRole.ISSUE_CLERK.value,
+        UserRole.ADMIN.value, UserRole.OWNER.value,
     ])),
 ):
     today = datetime.now(WORKSHOP_TZ).date()

@@ -1,29 +1,37 @@
-# Core build alignment with supplied client brief
+# Core build completion and acceptance limits
 
-Reviewed against the actual brief supplied on 6 November 2026. It supersedes
-assumptions in earlier progress reports. This is not complete compliance.
+Updated 7 November 2026 against the actual client brief. This supersedes the
+earlier gap snapshot. Scope remains the Software Engineering core, with selected
+depth; the product is not a replacement for showroom billing or a production ERP.
 
-| Requirement | Current position |
+| Requirement | Implemented and checked |
 | --- | --- |
-| Karigar master | Profiles and one default wastage percentage exist. Per-item-category agreements are missing. |
-| Issue/receipt maths | Decimal accounting, separate gross/net/fine, balances and settlements work. Explicit job-number and HUID fields are missing; descriptions are not equivalent. |
-| Client sample | API regression reproduces 109.920, 6.916 and 3.893 fine balances. Exact sample transactions are not yet seeded into the reviewer demo. |
-| Loss reviews | Threshold-based review and finance-only full write-off exist. Full write-off is a provisional policy. History-based drift detection is missing. |
-| Daily statement | Date-based custody, CSV and print styling exist. Editable baselines and missing refinery transfers are documented. CSV is not Tally export. |
-| Scale-photo AI | This phase adds local OCR, retained photo, proposed values, uncertainty, confirmation and server mismatch blocking. Real engine tested on a synthetic display; workshop photo accuracy is unmeasured. |
-| Roles/privacy | Sign-in and karigar self-scope exist. Staff stock access and clerk/manager alert visibility are broader than the brief and need correction. Finance-to-owner mapping is an assumption; no partner role exists yet. |
-| Mobile/Tamil | Responsive structure exists; phone visual review and Tamil slips remain missing. |
-| Power/network cuts | In-session retries are protected. Durable offline drafts/recovery after power loss are missing. |
-| Design | Existing restrained palette and aligned numbers; preview wording corrected. Full visual QA remains. |
-| Submission | Incremental commits exist. Deployment, reviewer demo, TDD and submission ZIP remain unfinished. |
+| Karigar master | Validated category-to-wastage agreements. Finance/owner editor; other roles cannot change them. |
+| Issues and receipts | Explicit job/category, net/fine maths, optional HUID, running balances, per-job and total overdraw checks, vault protection and linked settlements. |
+| Client reference | Exact three slips seeded additively under KG-REFERENCE. API regression preserves 109.920, 6.916 and 3.893g fine balances. |
+| Scale-photo AI | Actual local ONNX OCR, retained photo beside proposal, uncertainty handling, explicit confirmation and server mismatch blocking. No paid API key. |
+| Loss and drift | Finance/owner-only discrepancy review, same-category six-receipt drift rule and linked write-offs with notes. No accusations or automatic penalties. |
+| Daily stock | Owner-only opening/movement/closing custody for vault, refinery and karigars, CSV and print. |
+| Permissions | Separate Finance and owner accounts. Clerks cannot fetch stock totals or review endpoints. Review flags/notes are masked in operational slips. Karigars see only self. |
+| Phone/Tamil | Own Tamil/English cards. Phone-width screenshots inspected; measurement fields stack to preserve readable digits. |
+| Power/network cuts | Static production shell caches offline. Per-user drafts and submission keys recover after offline reload; no automatic offline posting. |
+| UI feedback | Loading/error/empty states, retry controls, labelled inputs, focus-managed dialogs and review success feedback. |
+| Validation | 67 backend tests, four production-build browser flows, build success and zero known npm advisories at validation. GitHub repository verified public. |
+| Submission | TDD PDF plus deployment.md packaged in one ZIP under 25 MB. GitHub URL is at the top of the TDD; accounts/run steps are documented. |
 
-The sample leaves 3.893g fine outstanding. That is not automatically loss merely
-because an allowance exists: actual wastage must be reported, and remaining gold
-may still be scrap or WIP.
+The implementation uses labelled provisional policies, not undocumented client
+facts. See technical-design.md assumptions A1–A14 for calculation basis, category
+defaults, excess/drift settings, write-off scope, baseline/timezone interpretation,
+OCR score limits and managed-device draft storage.
 
-Next priorities: restrict stock/alert exposure; category agreements and explicit
-job linkage; exact seeded scenario; durable tablet drafts; Tamil and photo/mobile
-QA. Old-gold desk, PAN/payment recording and Tally export are optional depth for
-this core build. Tax-rule implementation needs separate verified guidance if
-selected. Billing replacement, loans and savings stay out of scope. Client
-savings and reconciliation figures are assumptions/targets, not measured results.
+External acceptance still needed: connect hosting and verify a live reviewer URL
+if deployment is desired; obtain real workshop photo trials and native Tamil
+acceptance; confirm business policies with the client. A Docker definition and
+Render Blueprint are provided, but the local Docker daemon was unavailable.
+CI is configured; consult its actual run rather than assuming it succeeded.
+
+Deliberate cuts: optional old-gold/PAN/payment desk, Tally-specific integration,
+refinery transfer/assay workflow, period-close snapshots, partial/cash settlements,
+cross-device offline synchronization and production operations. Refinery baseline
+custody is included and carries forward. CSV is not represented as Tally output.
+Client savings are targets/assumptions; no measured ROI is claimed.

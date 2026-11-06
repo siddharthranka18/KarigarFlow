@@ -35,6 +35,7 @@ export function SlipInspection({ id, onClose, onNavigate }: Props) {
           <p className="text-xs font-mono text-brass-800">{tx.transaction_type.replace(/_/g, ' ')}</p>
           <p className="font-semibold text-charcoal-900 break-words">{tx.item_description}</p>
           <p className="text-xs text-charcoal-600">{tx.karigar_name || 'No karigar assigned'} {tx.karigar_code && `· ${tx.karigar_code}`}</p>
+          <p className="text-xs text-charcoal-600">Job: {tx.job_number || 'Legacy / opening record'} · Category: {tx.item_category || 'Unclassified'} {tx.huid && `· HUID: ${tx.huid}`}</p>
         </div>
         {tx.is_loss_alert && <AlertBanner type="danger" message="Excess wastage flagged for review. This flag is not evidence of an approved loss write-off." />}
         <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-parchment-100 border border-parchment-300 p-3 text-xs">

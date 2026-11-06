@@ -1,4 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, model_validator
+import secrets
 from typing import List
 from decimal import Decimal
 import os
@@ -12,7 +14,17 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DATABASE_URL: str = "postgresql+psycopg2://postgres@localhost:5433/karigarflow_db"
     
-    SECRET_KEY: str = "karigarflow-dev-insecure-secret-key-change-in-production-123456789"
+    SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(48))
+    SEED_DEMO_DATA: bool = True
+    FRONTEND_DIST: str = ''
+
+    @model_validator(mode='after')
+    def production_secret(self):
+        if self.ENVIRONMENT == 'production' and (len(self.SECRET_KEY) < 32 or 'insecure' in self.SECRET_KEY or 'SECRET_KEY' not in self.model_fields_set):
+            raise ValueError('Set a unique SECRET_KEY of at least 32 characters for production')
+        if self.ENVIRONMENT != 'production' and (len(self.SECRET_KEY) < 32 or 'insecure' in self.SECRET_KEY):
+            self.SECRET_KEY = secrets.token_urlsafe(48)
+        return self
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hour workshop shift
 

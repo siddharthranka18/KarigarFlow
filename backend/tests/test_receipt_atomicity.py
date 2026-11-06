@@ -8,7 +8,7 @@ from app.models.transaction import GoldTransaction
 
 
 def payload(**changes):
-    return {
+    return {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         'transaction_type': 'RECEIPT_ORNAMENT', 'karigar_id': 1,
         'item_description': 'Synthetic receipt atomicity sample',
         'gross_weight': '10.000', 'purity_percent': '91.60',

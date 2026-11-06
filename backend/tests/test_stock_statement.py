@@ -78,7 +78,7 @@ def test_statement_access(client, finance_token, clerk_token, karigar_token):
     url = f'/api/stock-statement?statement_date={DAY}'
     assert client.get(url).status_code == 401
     assert client.get(url, headers=auth(karigar_token)).status_code == 403
-    assert client.get(url, headers=auth(clerk_token)).status_code == 200
+    assert client.get(url, headers=auth(clerk_token)).status_code == 403
     assert client.get('/api/stock-statement', headers=auth(finance_token)).status_code == 200
 
 

@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'finance_head' | 'manager' | 'issue_clerk' | 'karigar';
+export type UserRole = 'admin' | 'owner' | 'finance_head' | 'manager' | 'issue_clerk' | 'karigar';
 
 export interface User {
   id: number;
@@ -21,6 +21,7 @@ export interface Karigar {
   phone?: string;
   specialization: string;
   benchmark_wastage_percent: number | string;
+  wastage_by_category: Record<string, number | string>;
   opening_balance_gross: number | string;
   opening_balance_fine: number | string;
   is_active: boolean;
@@ -46,6 +47,9 @@ export interface GoldTransaction {
   karigar_code?: string;
   created_by_user_id?: number;
   item_description: string;
+  job_number?: string;
+  item_category?: string;
+  huid?: string;
   gross_weight: string;
   stone_weight: string;
   net_weight: string;

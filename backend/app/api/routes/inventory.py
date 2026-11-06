@@ -16,9 +16,7 @@ def list_inventory(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles([
         UserRole.ADMIN.value,
-        UserRole.FINANCE_HEAD.value,
-        UserRole.WORKSHOP_MANAGER.value,
-        UserRole.ISSUE_CLERK.value
+        UserRole.OWNER.value
     ]))
 ):
     """
@@ -31,7 +29,7 @@ def list_inventory(
 def create_inventory_lot(
     payload: InventoryItemCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN.value, UserRole.FINANCE_HEAD.value, UserRole.WORKSHOP_MANAGER.value]))
+    current_user: User = Depends(require_roles([UserRole.ADMIN.value, UserRole.OWNER.value]))
 ):
     existing = db.query(GoldInventory).filter(GoldInventory.lot_code == payload.lot_code).first()
     if existing:

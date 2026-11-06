@@ -4,6 +4,7 @@ from app.models.karigar import Karigar
 
 def test_client_sample_balances_are_not_silently_written_off(client, clerk_token, test_db):
     k = test_db.get(Karigar, 2)
+    k.wastage_by_category = {'general': '3.00'}
     k.opening_balance_gross = Decimal('0.000')
     k.opening_balance_fine = Decimal('0.000')
     test_db.commit()
@@ -14,7 +15,7 @@ def test_client_sample_balances_are_not_silently_written_off(client, clerk_token
         ('TX-30438', 'RECEIPT_SCRAP', '3.300', '3.023', '3.893'),
     ]
     for reference, kind, gross, fine, expected_balance in samples:
-        result = client.post('/api/transactions', headers=headers, json={
+        result = client.post('/api/transactions', headers=headers, json={'job_number': 'OPENING', 'item_category': 'general',
             'karigar_id': 2, 'transaction_type': kind, 'item_description': reference,
             'gross_weight': gross, 'purity_percent': '91.60', 'allowed_wastage_percent': '3.00',
             'actual_wastage_weight': '0.000', 'scale_reading_confirmed': True,

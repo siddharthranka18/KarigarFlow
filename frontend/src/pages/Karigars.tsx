@@ -11,6 +11,7 @@ import { formatWeight, formatPurity, formatDateTime } from '../utils/formatters'
 import { useAuth } from '../features/auth/AuthContext';
 import { UserPlus, Search, Phone, History, ShieldAlert } from 'lucide-react';
 import { Karigar, GoldTransaction } from '../types';
+import { CategoryAgreements } from '../components/CategoryAgreements';
 
 export const Karigars: React.FC = () => {
   const queryClient = useQueryClient();
@@ -19,6 +20,7 @@ export const Karigars: React.FC = () => {
   const [selectedKarigar, setSelectedKarigar] = useState<Karigar | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [agreementKarigar, setAgreementKarigar] = useState<Karigar | null>(null);
 
   // Form state for new karigar
   const [newCode, setNewCode] = useState('');
@@ -30,7 +32,7 @@ export const Karigars: React.FC = () => {
   const [newOpeningFine, setNewOpeningFine] = useState('0.000');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data: karigars, isLoading } = useQuery({
+  const { data: karigars, isLoading, isError, refetch } = useQuery({
     queryKey: ['karigars'],
     queryFn: () => api.getKarigars(),
   });
@@ -131,6 +133,7 @@ export const Karigars: React.FC = () => {
         </div>
       )}
 
+      {isError && <div role="alert"><AlertBanner type="danger" message="Karigar records could not be loaded." /><Button onClick={() => refetch()}>Retry</Button></div>}
       {/* Karigars Ledger Table */}
       <Table>
         <TableHead>
@@ -170,7 +173,8 @@ export const Karigars: React.FC = () => {
                 </TableCell>
                 <TableCell className="text-xs text-charcoal-700">{k.specialization}</TableCell>
                 <TableCell align="right" isNumeric className="text-xs text-charcoal-600">
-                  {formatPurity(k.benchmark_wastage_percent)}
+                  {Object.entries(k.wastage_by_category || { general: k.benchmark_wastage_percent }).map(([category, value]) => <div key={category} className="whitespace-nowrap capitalize">{category}: {formatPurity(value)}</div>)}
+                  {isFinanceHead && <button className="underline text-brass-800 mt-2" onClick={() => setAgreementKarigar(k)}>Edit agreements</button>}
                 </TableCell>
                 <TableCell align="right" isNumeric className="text-xs text-charcoal-500">
                   {formatWeight(k.opening_balance_gross)}
@@ -187,8 +191,8 @@ export const Karigars: React.FC = () => {
                       {k.loss_alerts_count} ALERTS
                     </Badge>
                   ) : (
-                    <Badge variant="success" size="sm">
-                      CLEAN
+                    <Badge variant="default" size="sm">
+                      {isFinanceHead ? 'No open review' : 'Recorded'}
                     </Badge>
                   )}
                 </TableCell>
@@ -304,6 +308,8 @@ export const Karigars: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {agreementKarigar && <CategoryAgreements karigar={agreementKarigar} onClose={() => setAgreementKarigar(null)} />}
 
       {/* Karigar Transaction History Slips Modal */}
       <Modal

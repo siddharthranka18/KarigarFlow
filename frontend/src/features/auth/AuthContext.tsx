@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../../types';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AuthContextType {
   user: User | null;
@@ -9,6 +10,7 @@ interface AuthContextType {
   logout: () => void;
   hasRole: (roles: UserRole[]) => boolean;
   isFinanceHead: boolean;
+  isOwner: boolean;
   isClerk: boolean;
   isManager: boolean;
   isKarigar: boolean;
@@ -17,6 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const cache = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -39,6 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = (newToken: string, newUser: User) => {
+    cache.clear();
     setToken(newToken);
     setUser(newUser);
     localStorage.setItem('karigarflow_token', newToken);
@@ -46,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    cache.clear();
     setToken(null);
     setUser(null);
     localStorage.removeItem('karigarflow_token');
@@ -54,11 +59,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const hasRole = (roles: UserRole[]): boolean => {
     if (!user) return false;
-    if (user.role === 'admin') return true;
+    if (user.role === 'admin' || user.role === 'owner') return true;
     return roles.includes(user.role);
   };
 
-  const isFinanceHead = user?.role === 'admin' || user?.role === 'finance_head';
+  const isOwner = user?.role === 'admin' || user?.role === 'owner';
+  const isFinanceHead = isOwner || user?.role === 'finance_head';
   const isClerk = user?.role === 'issue_clerk';
   const isManager = user?.role === 'manager';
   const isKarigar = user?.role === 'karigar';
@@ -73,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         hasRole,
         isFinanceHead,
+        isOwner,
         isClerk,
         isManager,
         isKarigar,

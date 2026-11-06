@@ -38,7 +38,7 @@ def get_current_user(
 def require_roles(allowed_roles: List[str]):
     """Enforces Role-Based Access Control (RBAC)."""
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in allowed_roles and current_user.role != UserRole.ADMIN.value:
+        if current_user.role not in allowed_roles and current_user.role not in {UserRole.ADMIN.value, UserRole.OWNER.value}:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Operation not permitted for role '{current_user.role}'. Required one of: {allowed_roles}"

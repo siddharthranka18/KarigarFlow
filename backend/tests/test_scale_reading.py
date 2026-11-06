@@ -44,7 +44,7 @@ def test_photo_upload_confirmation_mismatch_and_privacy(client, clerk_token, fin
     reading = result.json()
     assert reading['weight'] == '120.000'
     assert reading['image_url'].startswith('data:image/jpeg;base64,')
-    payload = dict(transaction_type='ISSUE', karigar_id=1, item_description='Synthetic verified issue',
+    payload = dict(job_number='OPENING', item_category='general', transaction_type='ISSUE', karigar_id=1, item_description='Synthetic verified issue',
         gross_weight='120.000', purity_percent='91.60', scale_reading_id=reading['id'])
     assert client.post('/api/transactions', headers=headers, json=payload).status_code == 400
     payload['scale_reading_confirmed'] = False
@@ -72,7 +72,7 @@ def test_bad_upload_and_uncertain_reading_blocked(client, clerk_token, monkeypat
     result = client.post('/api/scale-readings', headers=headers, files={'photo': ('blank.png', sample_image(), 'image/png')})
     assert result.json()['status'] == 'uncertain'
     assert client.post('/api/transactions', headers=headers, json=dict(
-        transaction_type='ISSUE', karigar_id=1, item_description='Cannot approve uncertain OCR',
+        job_number='OPENING', item_category='general', transaction_type='ISSUE', karigar_id=1, item_description='Cannot approve uncertain OCR',
         gross_weight='120.000', purity_percent='91.60', scale_reading_confirmed=True,
         scale_reading_id=result.json()['id'])).status_code == 400
     def unavailable(_):

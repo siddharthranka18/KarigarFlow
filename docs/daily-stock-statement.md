@@ -6,7 +6,7 @@ screen, preserving backend decimal strings. Print uses a landscape layout and
 hides navigation and controls. On smaller screens the table scrolls horizontally.
 Export/print are disabled while loading, refreshing or after a fetch error.
 
-The staff-only GET /api/stock-statement endpoint accepts statement_date as an ISO
+The owner-only GET /api/stock-statement endpoint accepts statement_date as an ISO
 date, defaulting to today's date in India. Future and invalid dates are rejected.
 Karigars cannot access company stock figures. No migration is required.
 

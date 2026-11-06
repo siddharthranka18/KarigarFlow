@@ -49,7 +49,7 @@ def get_reading(reading_id: str, db: Session = Depends(get_db), user: User = Dep
     reading = db.get(ScaleReading, reading_id)
     if not reading:
         raise HTTPException(status_code=404, detail='Photo not found')
-    allowed = user.role in {'admin', 'finance_head'} or reading.user_id == user.id
+    allowed = user.role in {'admin', 'owner', 'finance_head'} or reading.user_id == user.id
     if user.role == 'karigar':
         allowed = db.query(GoldTransaction).join(Karigar).filter(
             Karigar.user_id == user.id,

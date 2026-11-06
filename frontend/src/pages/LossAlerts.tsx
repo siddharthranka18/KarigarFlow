@@ -21,10 +21,11 @@ export function LossAlerts() {
   const alerts = useQuery({
     queryKey: ['loss-alerts', status], queryFn: () => api.getLossAlerts(status), enabled: !isKarigar,
   });
+  const drift = useQuery({ queryKey: ['loss-drift'], queryFn: () => api.getDriftReviews(), enabled: isFinanceHead });
   const review = useMutation({
     mutationFn: ({ id, text }: { id: number; text: string }) => api.writeOffLoss(id, text),
     onSuccess: adjustment => {
-      for (const key of ['loss-alerts', 'recent-loss-alerts', 'transactions', 'recent-transactions', 'transaction-detail', 'daily-summary', 'daily-summary-badge', 'karigars', 'stock-statement']) {
+      for (const key of ['loss-alerts', 'loss-drift', 'review-summary', 'recent-loss-alerts', 'transactions', 'recent-transactions', 'transaction-detail', 'daily-summary', 'daily-summary-badge', 'karigars', 'stock-statement']) {
         cache.invalidateQueries({ queryKey: [key] });
       }
       setSelected(null);
@@ -40,6 +41,12 @@ export function LossAlerts() {
     </div>
     <AlertBanner type="info" message="Demo policy: Finance may write off the full flagged excess after investigation. This reduces karigar liability and company gold; it does not return gold to the vault. Recovered gold must be recorded as a physical receipt instead. Partial and cash settlements are not supported here." />
     {approvedSlip && <div role="status"><AlertBanner type="success" message={`Write-off saved as ${approvedSlip}. See Approved write-offs for the decision and investigation notes.`} /></div>}
+    <section className="ledger-card p-4 space-y-3"><h3 className="font-semibold">Early review · rising reported wastage</h3><p className="text-xs text-charcoal-600">Compares the latest 3 receipts with the previous 3 in the same item category. A rise of at least 0.50 percentage points prompts a review. This provisional threshold is not an accusation or an automatic deduction.</p>
+      {drift.isLoading && <p role="status">Checking history…</p>}
+      {drift.isError && <p role="alert">History review unavailable. Refresh this page to retry.</p>}
+      {drift.data?.length === 0 && <p className="text-xs text-charcoal-600">No rising-wastage reviews found. Karigars with fewer than 6 comparable receipts are not scored.</p>}
+      {drift.data?.map(item => <div key={`${item.karigar_id}-${item.item_category}`} className="border-t border-parchment-200 pt-3 text-xs space-y-2"><strong>{item.karigar_name} · {item.item_category}</strong><p className="font-mono">{item.baseline_percent}% → {item.recent_percent}% (+{item.increase_points} percentage points)</p><p>{item.message}</p><div className="flex flex-wrap gap-2">{item.slip_ids.map((id, i) => <button key={id} className="underline text-brass-800" onClick={() => setInspected(id)}>Receipt {i+1}</button>)}</div></div>)}
+    </section>
     <div className="flex flex-wrap gap-2">
       {(['open', 'resolved'] as const).map(value => <Button key={value} size="sm"
         variant={status === value ? 'primary' : 'secondary'} onClick={() => setStatus(value)}>

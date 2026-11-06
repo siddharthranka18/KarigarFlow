@@ -1,0 +1,44 @@
+name: Checks
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: pip install -r backend/requirements.txt
+      - name: Prepare isolated databases
+        run: |
+          python -c "import psycopg2; c=psycopg2.connect(host='localhost',port=5433,user='postgres',dbname='postgres'); c.autocommit=True; q=c.cursor(); q.execute('CREATE DATABASE karigarflow_db'); q.execute('CREATE DATABASE karigarflow_test_db'); c.close()"
+          cd backend
+          python -m alembic upgrade head
+      - run: python -m pytest backend/tests -q -p no:cacheprovider
+      - run: npm ci && npm run build && npm audit --audit-level=moderate
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Browser tests on separate E2E database
+        run: python scripts/run_e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-results
+          path: frontend/test-results
+      - name: Validate deployment image
+        run: docker build --tag karigarflow:ci .

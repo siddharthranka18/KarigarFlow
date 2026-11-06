@@ -22,7 +22,7 @@ import { api } from '../services/api';
 import { clsx } from 'clsx';
 
 export const MainLayout: React.FC = () => {
-  const { user, logout, isKarigar } = useAuth();
+  const { user, logout, isKarigar, isOwner, isFinanceHead } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -31,11 +31,12 @@ export const MainLayout: React.FC = () => {
   const { data: summary } = useQuery({
     queryKey: ['daily-summary-badge'],
     queryFn: () => api.getDailySummary(),
-    enabled: !isKarigar,
+    enabled: isOwner,
     refetchInterval: 30000,
   });
 
-  const lossAlertsCount = summary?.loss_alerts_count || 0;
+  const { data: reviews } = useQuery({ queryKey: ['review-summary'], queryFn: () => api.getReviewSummary(), enabled: isFinanceHead, refetchInterval: 30000 });
+  const lossAlertsCount = isFinanceHead ? (reviews?.open_count ?? summary?.loss_alerts_count ?? 0) : 0;
 
   const handleLogout = () => {
     logout();
@@ -47,14 +48,14 @@ export const MainLayout: React.FC = () => {
   const navItems = [
     {
       to: '/',
-      label: isKarigar ? 'Craftsman Overview' : 'Overview',
+      label: isKarigar ? 'என் கணக்கு' : 'Overview',
       icon: <LayoutDashboard className="w-4 h-4" />,
       allowed: true,
       badge: null,
     },
     {
       to: '/slips',
-      label: 'Gold Transactions',
+      label: isKarigar ? 'என் சீட்டுகள்' : 'Gold Transactions',
       icon: <FileSpreadsheet className="w-4 h-4" />,
       allowed: true,
       badge: null,
@@ -70,14 +71,14 @@ export const MainLayout: React.FC = () => {
       to: '/inventory',
       label: 'Inventory',
       icon: <Boxes className="w-4 h-4" />,
-      allowed: !isKarigar,
+      allowed: isOwner,
       badge: null,
     },
     {
       to: '/loss-alerts',
       label: 'Loss Alerts',
       icon: <AlertOctagon className="w-4 h-4" />,
-      allowed: !isKarigar,
+      allowed: isFinanceHead,
       badge: lossAlertsCount > 0 ? (
         <span className="ml-auto px-1.5 py-0.2 rounded-xs text-[10px] font-mono font-bold bg-status-danger text-white animate-pulse">
           {lossAlertsCount}
@@ -88,7 +89,7 @@ export const MainLayout: React.FC = () => {
       to: '/daily-stock',
       label: 'Daily Stock Statement',
       icon: <Coins className="w-4 h-4" />,
-      allowed: !isKarigar,
+      allowed: isOwner,
       badge: null,
     },
   ];
@@ -247,7 +248,7 @@ export const MainLayout: React.FC = () => {
             <div className="hidden md:flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#15803D] animate-pulse" />
               <span className="text-xs font-mono font-medium text-[#44403C]">
-                Shift Active • Vault Online
+                Synthetic demo workshop
               </span>
             </div>
           </div>

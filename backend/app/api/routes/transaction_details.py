@@ -8,6 +8,7 @@ from app.models.karigar import Karigar
 from app.models.transaction import GoldTransaction
 from app.models.user import User, UserRole
 from app.schemas.transaction import TransactionDetail
+from app.services.visibility import visible_transaction
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -19,11 +20,13 @@ def inspect_transaction(
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(GoldTransaction).options(joinedload(GoldTransaction.karigar))
+    if current_user.role not in {'admin', 'owner'}:
+        query = query.filter(GoldTransaction.transaction_type != 'PURCHASE')
     if current_user.role == UserRole.KARIGAR.value:
         own_ids = db.query(Karigar.id).filter(Karigar.user_id == current_user.id)
         query = query.filter(GoldTransaction.karigar_id.in_(own_ids))
     elif current_user.role not in {
-        UserRole.ADMIN.value, UserRole.FINANCE_HEAD.value,
+        UserRole.ADMIN.value, UserRole.OWNER.value, UserRole.FINANCE_HEAD.value,
         UserRole.WORKSHOP_MANAGER.value, UserRole.ISSUE_CLERK.value,
     }:
         raise HTTPException(status_code=403, detail="Operation not permitted")
@@ -45,8 +48,8 @@ def inspect_transaction(
         GoldTransaction.id != tx.id,
     ).order_by(GoldTransaction.created_at, GoldTransaction.id).all()
     return TransactionDetail(
-        transaction=tx,
+        transaction=visible_transaction(tx, current_user),
         recorded_by_name=tx.created_by_user.full_name if tx.created_by_user else None,
-        parent=parent,
-        linked_entries=children,
+        parent=visible_transaction(parent, current_user) if parent else None,
+        linked_entries=[visible_transaction(child, current_user) for child in children],
     )

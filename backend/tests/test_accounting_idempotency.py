@@ -19,7 +19,7 @@ def finance_token():
 # 1. Complete Workflow: Issue -> Jewellery Receipt -> Auditable Wastage Settlement -> Scrap Reconciliation
 def test_complete_issue_receipt_wastage_settlement_workflow(clerk_token):
     headers = {"Authorization": f"Bearer {clerk_token}"}
-    
+
     # Step 0: Record Karigar 2's starting baseline balance
     k_init_res = client.get("/api/karigars/2", headers=headers)
     assert k_init_res.status_code == 200
@@ -27,7 +27,7 @@ def test_complete_issue_receipt_wastage_settlement_workflow(clerk_token):
     init_fine = Decimal(str(k_init_res.json()["current_balance_fine"]))
 
     # Step 1: Issue 100.000g of 22K (91.60% = 91.600g fine) to Karigar 2 (Murugesan)
-    issue_payload = {
+    issue_payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "ISSUE",
         "karigar_id": 2,
         "item_description": "22K Traditional Coimbatore Kada Batch #401",
@@ -46,7 +46,7 @@ def test_complete_issue_receipt_wastage_settlement_workflow(clerk_token):
     # Finished ornament: 95.000g (fine gold = 95 * 0.916 = 87.020g)
     # Allowed wastage @ 2.00% on 95g = 1.900g
     # Actual wastage reported = 1.900g (legitimate, <= 2.000g)
-    receipt_payload = {
+    receipt_payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "RECEIPT_ORNAMENT",
         "karigar_id": 2,
         "item_description": "Finished 22K Solid Kadas - Settling Batch #401",
@@ -67,7 +67,7 @@ def test_complete_issue_receipt_wastage_settlement_workflow(clerk_token):
     txs_res = client.get("/api/transactions?karigar_id=2", headers=headers)
     assert txs_res.status_code == 200
     all_txs = txs_res.json()
-    
+
     # Locate the linked wastage settlement slip
     wst_slip = next(
         (t for t in all_txs if t["transaction_type"] == "WASTAGE_SETTLEMENT" and t["related_slip_number"] == rec_slip),
@@ -95,7 +95,7 @@ def test_complete_issue_receipt_wastage_settlement_workflow(clerk_token):
     assert mid_fine == init_fine + Decimal("2.840")
 
     # Step 5: Complete the Physical Reconciliation: Return remaining 3.100g as scrap cuttings
-    scrap_payload = {
+    scrap_payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "RECEIPT_SCRAP",
         "karigar_id": 2,
         "item_description": "22K Scrap Cuttings & Wire Ends - Batch #401 Closure",
@@ -122,8 +122,8 @@ def test_complete_issue_receipt_wastage_settlement_workflow(clerk_token):
 def test_idempotency_retry_returns_same_transaction(clerk_token):
     headers = {"Authorization": f"Bearer {clerk_token}"}
     idemp_key = f"idemp-test-{uuid.uuid4()}"
-    
-    payload = {
+
+    payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "ISSUE",
         "karigar_id": 1,
         "item_description": "22K Idempotent Network Retry Test",
@@ -133,7 +133,7 @@ def test_idempotency_retry_returns_same_transaction(clerk_token):
         "allowed_wastage_percent": 2.00,
         "idempotency_key": idemp_key
     }
-    
+
     # First attempt
     res1 = client.post("/api/transactions", json=payload, headers=headers)
     assert res1.status_code == 201
@@ -155,9 +155,9 @@ def test_idempotency_retry_returns_same_transaction(clerk_token):
 # 3. Legitimate Identical Transactions are NOT blocked if idempotency keys differ
 def test_legitimate_identical_transactions_accepted_with_different_keys(clerk_token):
     headers = {"Authorization": f"Bearer {clerk_token}"}
-    
+
     # Clerk issues two distinct 10.000g batches back-to-back for two separate job orders
-    payload1 = {
+    payload1 = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "ISSUE",
         "karigar_id": 4,
         "item_description": "Batch A: 10g 22K Casting Gold",
@@ -165,7 +165,7 @@ def test_legitimate_identical_transactions_accepted_with_different_keys(clerk_to
         "purity_percent": 91.60,
         "idempotency_key": f"batch-a-{uuid.uuid4()}"
     }
-    payload2 = {
+    payload2 = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "ISSUE",
         "karigar_id": 4,
         "item_description": "Batch A: 10g 22K Casting Gold",
@@ -184,9 +184,9 @@ def test_legitimate_identical_transactions_accepted_with_different_keys(clerk_to
 # 4. Excess Wastage Loss Alert Workflow
 def test_excess_wastage_loss_alert_and_outstanding_liability(clerk_token):
     headers = {"Authorization": f"Bearer {clerk_token}"}
-    
+
     # Issue 50.000g 22K to Karigar 3
-    issue_payload = {
+    issue_payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "ISSUE",
         "karigar_id": 3,
         "item_description": "22K Filigree Choker Special Order",
@@ -203,7 +203,7 @@ def test_excess_wastage_loss_alert_and_outstanding_liability(clerk_token):
     # Allowed wastage @ 2.00% = 1.000g
     # Actual reported wastage = 4.000g
     # Excess wastage = 3.000g (> 0.100g threshold -> triggers Loss Alert!)
-    rec_payload = {
+    rec_payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "RECEIPT_ORNAMENT",
         "karigar_id": 3,
         "item_description": "Filigree Choker Finished - High Burn Loss",
@@ -215,7 +215,8 @@ def test_excess_wastage_loss_alert_and_outstanding_liability(clerk_token):
     }
     rec_res = client.post("/api/transactions", json=rec_payload, headers=headers)
     assert rec_res.status_code == 201
-    assert rec_res.json()["is_loss_alert"] is True
+    # Clerks see operational measurements, never Finance review flags.
+    assert rec_res.json()["is_loss_alert"] is False
     # Allowed on 46.000g @ 2% is 0.920g. Actual is 4.000g. Variance = 4.000 - 0.920 = 3.080g (> 0.100g threshold)
     assert Decimal(str(rec_res.json()["wastage_variance_weight"])) == Decimal("3.080")
 

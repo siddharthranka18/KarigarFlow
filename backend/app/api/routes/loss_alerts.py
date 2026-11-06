@@ -14,9 +14,10 @@ from app.models.user import User
 from app.schemas.transaction import TransactionResponse
 from app.services.gold_calculations import calculate_fine_gold, compute_karigar_balance
 from app.services.loss_alerts import unresolved_loss_conditions
+from app.services.loss_drift import loss_drift_reviews
 
 router = APIRouter(prefix='/loss-alerts', tags=['Loss review'])
-STAFF = ['admin', 'finance_head', 'manager', 'issue_clerk']
+STAFF = ['admin', 'owner', 'finance_head']
 
 
 class LossReview(BaseModel):
@@ -36,6 +37,16 @@ def resolution_for(db, tx):
         GoldTransaction.related_slip_number == tx.slip_number,
         GoldTransaction.karigar_id == tx.karigar_id,
     ).order_by(GoldTransaction.id).first()
+
+
+@router.get('/drift')
+def drift_reviews(db: Session = Depends(get_db), user: User = Depends(require_roles(STAFF))):
+    return loss_drift_reviews(db)
+
+
+@router.get('/summary')
+def review_summary(db: Session = Depends(get_db), user: User = Depends(require_roles(STAFF))):
+    return {'open_count': db.query(GoldTransaction).filter(*unresolved_loss_conditions()).count(), 'drift_count': len(loss_drift_reviews(db))}
 
 
 @router.get('', response_model=list[LossAlertResponse])
@@ -83,12 +94,20 @@ def write_off_loss(
     )
     if gross <= 0 or fine <= 0 or gross > balance.closing_balance_gross or fine > balance.closing_balance_fine:
         raise HTTPException(status_code=409, detail='Excess exceeds available custody. Reconcile returns and prior adjustments before approving.')
+    if tx.job_number and tx.job_number != 'OPENING':
+        job_history = [t for t in history if t.job_number == tx.job_number]
+        job_balance = compute_karigar_balance(Decimal(0), Decimal(0),
+            [t for t in job_history if t.transaction_type == 'ISSUE'],
+            [t for t in job_history if t.transaction_type in {'RECEIPT_ORNAMENT', 'RECEIPT_SCRAP', 'RECEIPT_DUST', 'WASTAGE_SETTLEMENT', 'LOSS_ADJUSTMENT'}])
+        if gross > job_balance.closing_balance_gross or fine > job_balance.closing_balance_fine:
+            raise HTTPException(status_code=409, detail='Excess exceeds remaining job custody. Review recovered gold before approving.')
     adjustment = GoldTransaction(
         slip_number=f'ADJ-{uuid4().hex[:16].upper()}',
         idempotency_key=f'loss-resolution:{tx.id}',
         related_slip_number=tx.slip_number, transaction_type='LOSS_ADJUSTMENT',
         karigar_id=karigar.id, created_by_user_id=user.id,
         item_description=f'Finance-approved excess loss for {tx.slip_number}',
+        job_number=tx.job_number, item_category=tx.item_category,
         gross_weight=gross, stone_weight=Decimal('0.000'), net_weight=gross,
         purity_percent=tx.purity_percent, fine_weight=fine,
         scale_reading_confirmed=False,

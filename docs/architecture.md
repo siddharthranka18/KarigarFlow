@@ -1,5 +1,10 @@
 # KarigarFlow Architecture & System Design
 
+> Historical architecture snapshot. The actual client brief and subsequent
+> implementation supersede this report's role and seeding descriptions. Use
+> [technical-design.md](technical-design.md) for the current design, exact scope,
+> tested behaviour and explicitly labelled assumptions.
+
 ## 1. Executive Summary
 
 **KarigarFlow** is an operational Enterprise Resource Planning (ERP) and gold inventory ledger system purpose-built for an established jewellery manufacturer in Coimbatore, Tamil Nadu, operating:

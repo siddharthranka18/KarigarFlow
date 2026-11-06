@@ -4,6 +4,7 @@ import enum
 from app.db.base import Base
 
 class UserRole(str, enum.Enum):
+    OWNER = "owner"
     ADMIN = "admin"                    # Full control / Finance Head
     FINANCE_HEAD = "finance_head"      # Auditing, P&L, stock verification
     WORKSHOP_MANAGER = "manager"       # Karigar assignment, daily reconciliation

@@ -26,8 +26,8 @@ stored ready status, explicitly supplied true confirmation and decimal equality
 of weight and any detected purity. Client-supplied OCR values and arbitrary
 photo URLs are not trusted. Errors do not create slips. Users may retake a photo
 or explicitly remove it and use manual entry; that records no photo verification
-claim. Legacy API manual-entry defaults remain unchanged; universal explicit
-manual confirmation is a remaining hardening task.
+claim. Manual entries also require explicit confirmation on the backend;
+confirmation defaults to false. Every new slip requires a job number/category.
 
 POST /api/scale-readings allows clerk/Finance; POST /api/transactions accepts
 scale_reading_id. Saved slips retain a reference and inspection retrieves the

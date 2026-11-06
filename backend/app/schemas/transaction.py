@@ -2,22 +2,27 @@ from pydantic import BaseModel, Field, ConfigDict
 from decimal import Decimal
 from typing import Optional
 from datetime import datetime
+from app.schemas.agreements import Category
 
 class TransactionCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra='forbid')
     transaction_type: str  # ISSUE, RECEIPT_ORNAMENT, RECEIPT_SCRAP, RECEIPT_DUST, WASTAGE_SETTLEMENT, LOSS_ADJUSTMENT, PURCHASE
     karigar_id: Optional[int] = None
-    item_description: str
-    gross_weight: Decimal = Field(..., gt=0, decimal_places=3, description="Weight in grams to 3 decimal places")
-    stone_weight: Decimal = Field(default=Decimal("0.000"), ge=0, decimal_places=3)
+    item_description: str = Field(min_length=1, max_length=255)
+    job_number: str = Field(min_length=1, max_length=80, pattern=r'^[A-Za-z0-9][A-Za-z0-9 /_-]*$')
+    item_category: Category
+    huid: Optional[str] = Field(default=None, pattern=r'^[A-Z0-9]{6}$')
+    gross_weight: Decimal = Field(..., gt=0, max_digits=10, decimal_places=3, description="Weight in grams to 3 decimal places")
+    stone_weight: Decimal = Field(default=Decimal("0.000"), ge=0, max_digits=10, decimal_places=3)
     purity_percent: Decimal = Field(..., gt=0, le=100, decimal_places=2, description="Gold purity % (e.g. 91.60 for 22K)")
-    allowed_wastage_percent: Optional[Decimal] = Field(default=Decimal("0.00"), ge=0, le=10)
-    actual_wastage_weight: Optional[Decimal] = Field(default=Decimal("0.000"), ge=0)
-    scale_reading_confirmed: bool = True
-    scale_image_url: Optional[str] = None
-    scale_reading_id: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    related_slip_number: Optional[str] = None
-    notes: Optional[str] = None
+    allowed_wastage_percent: Optional[Decimal] = Field(default=Decimal("0.00"), ge=0, le=10, decimal_places=2)
+    actual_wastage_weight: Optional[Decimal] = Field(default=Decimal("0.000"), ge=0, max_digits=10, decimal_places=3)
+    scale_reading_confirmed: bool = False
+    scale_image_url: Optional[str] = Field(default=None, max_length=500)
+    scale_reading_id: Optional[str] = Field(default=None, max_length=36)
+    idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    related_slip_number: Optional[str] = Field(default=None, max_length=100)
+    notes: Optional[str] = Field(default=None, max_length=2000)
 
 class TransactionResponse(BaseModel):
     id: int
@@ -30,6 +35,9 @@ class TransactionResponse(BaseModel):
     karigar_code: Optional[str] = None
     created_by_user_id: Optional[int]
     item_description: str
+    job_number: Optional[str] = None
+    item_category: Optional[str] = None
+    huid: Optional[str] = None
     gross_weight: Decimal
     stone_weight: Decimal
     net_weight: Decimal

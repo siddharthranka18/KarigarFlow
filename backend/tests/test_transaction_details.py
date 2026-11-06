@@ -8,7 +8,7 @@ def headers(token):
 
 
 def receipt(client, token, karigar_id=1):
-    response = client.post('/api/transactions', headers=headers(token), json={
+    response = client.post('/api/transactions', headers=headers(token), json={'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         'transaction_type': 'RECEIPT_ORNAMENT', 'karigar_id': karigar_id,
         'item_description': 'Synthetic inspection sample',
         'gross_weight': '10.000', 'purity_percent': '91.60',

@@ -14,7 +14,7 @@ def auth(token):
 
 
 def flagged(client, token):
-    result = client.post('/api/transactions', headers=auth(token), json={
+    result = client.post('/api/transactions', headers=auth(token), json={'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         'transaction_type': 'RECEIPT_ORNAMENT', 'karigar_id': 1,
         'item_description': 'Synthetic excess wastage review',
         'gross_weight': '10.000', 'purity_percent': '91.60',
@@ -67,7 +67,7 @@ def test_review_permissions(client, finance_token, clerk_token, karigar_token):
     for token in (clerk_token, karigar_token):
         assert client.post(url, headers=auth(token), json=NOTES).status_code == 403
     assert client.get('/api/loss-alerts', headers=auth(karigar_token)).status_code == 403
-    assert client.get('/api/loss-alerts', headers=auth(clerk_token)).status_code == 200
+    assert client.get('/api/loss-alerts', headers=auth(clerk_token)).status_code == 403
 
 
 @pytest.mark.parametrize('changes', [
@@ -92,7 +92,7 @@ def test_insufficient_custody_blocks_review(client, finance_token, test_db):
 
 @pytest.mark.parametrize('kind', ['LOSS_ADJUSTMENT', 'WASTAGE_SETTLEMENT', 'UNKNOWN'])
 def test_generic_slip_endpoint_cannot_bypass_approval(client, clerk_token, kind):
-    result = client.post('/api/transactions', headers=auth(clerk_token), json={
+    result = client.post('/api/transactions', headers=auth(clerk_token), json={'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         'transaction_type': kind, 'karigar_id': 1, 'item_description': 'Bypass attempt',
         'gross_weight': '1.000', 'purity_percent': '91.60',
     })

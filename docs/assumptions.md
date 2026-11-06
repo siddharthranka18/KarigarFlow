@@ -1,5 +1,9 @@
 # Assumptions & Operational Status
 
+> Historical assumptions snapshot. Current assumptions A1–A14, privacy policy
+> and validation limits are maintained in [technical-design.md](technical-design.md).
+> In particular, stock access is owner-only and Finance is a separate role.
+
 The client explicitly requires operational assumptions to be documented and tracked across development cycles. Below, system rules are partitioned into **Locked System Invariants** (verified by the test suite and database constraints) and **Provisional Business Rules** (functional defaults implemented for demonstration that await final client workshop master and finance head sign-off).
 
 ---

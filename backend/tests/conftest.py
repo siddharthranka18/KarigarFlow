@@ -10,6 +10,7 @@ CRITICAL SAFETY RULES:
 
 import os
 import pytest
+from functools import lru_cache
 from decimal import Decimal
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -32,6 +33,7 @@ from app.models.karigar import Karigar
 from app.models.inventory import GoldInventory
 from app.models.transaction import GoldTransaction
 from app.core.security import get_password_hash, create_access_token
+demo_password_hash = lru_cache(maxsize=4)(get_password_hash)
 from fastapi.testclient import TestClient
 
 # Create dedicated test engine pointing exclusively to karigarflow_test_db
@@ -53,7 +55,10 @@ app.dependency_overrides[get_db] = override_get_db
 def setup_test_database_schema():
     """Ensures test database has all tables created."""
     assert test_engine.url.database == "karigarflow_test_db"
-    Base.metadata.create_all(bind=test_engine)
+    from alembic.config import Config
+    from alembic import command
+    from pathlib import Path
+    command.upgrade(Config(str(Path(__file__).resolve().parents[1] / 'alembic.ini')), 'head')
     yield
 
 @pytest.fixture(autouse=True)
@@ -78,7 +83,7 @@ def isolate_and_seed_test_db():
         admin_user = User(
             id=1,
             email="finance@karigarflow.com",
-            hashed_password=get_password_hash("Finance@123"),
+            hashed_password=demo_password_hash("Finance@123"),
             full_name="K. Ramanathan (Finance Head)",
             role=UserRole.ADMIN.value,
             is_active=True
@@ -86,7 +91,7 @@ def isolate_and_seed_test_db():
         clerk_user = User(
             id=2,
             email="clerk@karigarflow.com",
-            hashed_password=get_password_hash("Clerk@123"),
+            hashed_password=demo_password_hash("Clerk@123"),
             full_name="M. Sundaram (Gold Issue Clerk)",
             role=UserRole.ISSUE_CLERK.value,
             is_active=True
@@ -94,7 +99,7 @@ def isolate_and_seed_test_db():
         manager_user = User(
             id=3,
             email="manager@karigarflow.com",
-            hashed_password=get_password_hash("Manager@123"),
+            hashed_password=demo_password_hash("Manager@123"),
             full_name="S. Velumani (Workshop Master)",
             role=UserRole.WORKSHOP_MANAGER.value,
             is_active=True
@@ -102,7 +107,7 @@ def isolate_and_seed_test_db():
         karigar_user = User(
             id=4,
             email="karigar1@karigarflow.com",
-            hashed_password=get_password_hash("Karigar@123"),
+            hashed_password=demo_password_hash("Karigar@123"),
             full_name="Anand Swamy (Master Goldsmith)",
             role=UserRole.KARIGAR.value,
             is_active=True
@@ -118,6 +123,7 @@ def isolate_and_seed_test_db():
             phone="+91 98421 11201",
             specialization="Temple Jewellery & Handcrafted Chains",
             benchmark_wastage_percent=Decimal("2.20"),
+            wastage_by_category={'general': '2.00'},
             opening_balance_gross=Decimal("45.250"),
             opening_balance_fine=Decimal("41.449"),
             user_id=4,
@@ -130,6 +136,7 @@ def isolate_and_seed_test_db():
             phone="+91 98421 11202",
             specialization="Solid Bangles & Kadas",
             benchmark_wastage_percent=Decimal("1.80"),
+            wastage_by_category={'general': '2.00'},
             opening_balance_gross=Decimal("82.100"),
             opening_balance_fine=Decimal("75.204"),
             is_active=True
@@ -141,6 +148,7 @@ def isolate_and_seed_test_db():
             phone="+91 98421 11203",
             specialization="Antique Choker & Centrifugal Casting",
             benchmark_wastage_percent=Decimal("2.50"),
+            wastage_by_category={'general': '2.00'},
             opening_balance_gross=Decimal("110.000"),
             opening_balance_fine=Decimal("100.760"),
             is_active=True
@@ -152,6 +160,7 @@ def isolate_and_seed_test_db():
             phone="+91 98421 11204",
             specialization="Stone Setting & Navratna Work",
             benchmark_wastage_percent=Decimal("2.00"),
+            wastage_by_category={'general': '2.00'},
             opening_balance_gross=Decimal("30.500"),
             opening_balance_fine=Decimal("27.938"),
             is_active=True
@@ -191,6 +200,11 @@ def isolate_and_seed_test_db():
             location="Refinery Dispatch Tray"
         )
         db.add_all([lot1, lot2, lot3])
+        db.commit()
+
+        # Explicit fixture IDs must not leave PostgreSQL sequences at 1.
+        for table in ('users', 'karigars', 'gold_inventory'):
+            db.execute(text(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), (SELECT MAX(id) FROM {table}), true)"))
         db.commit()
 
         yield db

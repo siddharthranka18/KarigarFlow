@@ -26,7 +26,8 @@ export function formatPurity(val: number | string | undefined | null): string {
 export function formatDateTime(isoString: string | undefined): string {
   if (!isoString) return '-';
   try {
-    const d = new Date(isoString);
+    const normalized = /^\d{4}-\d{2}-\d{2}T/.test(isoString) && !/(Z|[+-]\d\d:\d\d)$/.test(isoString) ? `${isoString}Z` : isoString;
+    const d = new Date(normalized);
     return new Intl.DateTimeFormat('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -34,6 +35,7 @@ export function formatDateTime(isoString: string | undefined): string {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
+      timeZone: 'Asia/Kolkata',
     }).format(d);
   } catch {
     return isoString;
@@ -48,6 +50,7 @@ export function formatDateOnly(isoString: string | undefined): string {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
+      timeZone: 'Asia/Kolkata',
     }).format(d);
   } catch {
     return isoString;

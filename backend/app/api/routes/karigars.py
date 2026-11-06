@@ -10,6 +10,7 @@ from app.schemas.karigar import KarigarCreate, KarigarUpdate, KarigarResponse, K
 from app.api.dependencies import get_current_user, require_roles
 from app.services.gold_calculations import compute_karigar_balance, round_weight
 from app.services.loss_alerts import unresolved_loss_conditions
+from app.schemas.agreements import CategoryAgreements
 
 router = APIRouter(prefix="/karigars", tags=["Karigars"])
 
@@ -50,6 +51,7 @@ def enrich_karigar_balance(karigar: Karigar, db: Session) -> KarigarWithBalance:
         phone=karigar.phone,
         specialization=karigar.specialization,
         benchmark_wastage_percent=Decimal(str(karigar.benchmark_wastage_percent)),
+        wastage_by_category=karigar.wastage_by_category or {'general': str(karigar.benchmark_wastage_percent)},
         opening_balance_gross=Decimal(str(karigar.opening_balance_gross)),
         opening_balance_fine=Decimal(str(karigar.opening_balance_fine)),
         is_active=karigar.is_active,
@@ -78,7 +80,10 @@ def list_karigars(
         query = query.filter(Karigar.user_id == current_user.id)
 
     karigars = query.order_by(Karigar.karigar_code).all()
-    return [enrich_karigar_balance(k, db) for k in karigars]
+    results = [enrich_karigar_balance(k, db) for k in karigars]
+    if current_user.role not in {'admin', 'owner', 'finance_head'}:
+        results = [r.model_copy(update={'loss_alerts_count': 0}) for r in results]
+    return results
 
 @router.get("/{karigar_id}", response_model=KarigarWithBalance)
 def get_karigar(
@@ -93,7 +98,10 @@ def get_karigar(
     if current_user.role == UserRole.KARIGAR.value and karigar.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied to other karigar records")
 
-    return enrich_karigar_balance(karigar, db)
+    result = enrich_karigar_balance(karigar, db)
+    if current_user.role not in {'admin', 'owner', 'finance_head'}:
+        result.loss_alerts_count = 0
+    return result
 
 @router.post("", response_model=KarigarResponse, status_code=status.HTTP_201_CREATED)
 def create_karigar(
@@ -111,6 +119,7 @@ def create_karigar(
         phone=payload.phone,
         specialization=payload.specialization,
         benchmark_wastage_percent=payload.benchmark_wastage_percent,
+        wastage_by_category={k: str(v) for k, v in payload.wastage_by_category.items()} or {'general': str(payload.benchmark_wastage_percent)},
         opening_balance_gross=payload.opening_balance_gross,
         opening_balance_fine=payload.opening_balance_fine,
         is_active=True
@@ -119,4 +128,15 @@ def create_karigar(
     db.commit()
     db.refresh(karigar)
     return karigar
+
+
+@router.put('/{karigar_id}/agreements', response_model=KarigarWithBalance)
+def update_agreements(karigar_id: int, payload: CategoryAgreements, db: Session = Depends(get_db),
+    user: User = Depends(require_roles(['finance_head']))):
+    karigar = db.get(Karigar, karigar_id)
+    if not karigar:
+        raise HTTPException(status_code=404, detail='Karigar not found')
+    karigar.wastage_by_category = {key: str(value) for key, value in payload.wastage_by_category.items()}
+    db.commit()
+    return enrich_karigar_balance(karigar, db)
 

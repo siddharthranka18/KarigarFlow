@@ -66,7 +66,7 @@ def test_controlled_vault_karigar_wastage_lifecycle(client, clerk_token, finance
     assert Decimal(str(k1_init["current_balance_fine"])) == Decimal("41.449")
 
     # Step 2: Issue 100.000g 22K to Karigar 1
-    issue_payload = {
+    issue_payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "karigar_id": 1,
         "transaction_type": "ISSUE",
         "gross_weight": "100.000",
@@ -87,7 +87,7 @@ def test_controlled_vault_karigar_wastage_lifecycle(client, clerk_token, finance
     assert Decimal(str(k1_after_issue["current_balance_fine"])) == Decimal("133.049")
 
     # Steps 3–4 save the ornament receipt and generated settlement atomically.
-    rcpt_ornament_payload = {
+    rcpt_ornament_payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "karigar_id": 1,
         "transaction_type": "RECEIPT_ORNAMENT",
         "gross_weight": "95.000",
@@ -112,7 +112,7 @@ def test_controlled_vault_karigar_wastage_lifecycle(client, clerk_token, finance
     assert len(settlements) == 1
     assert settlements[0].gross_weight == Decimal('1.900')
     assert settlements[0].fine_weight == Decimal('1.740')
-    manual = client.post('/api/transactions', headers=admin_headers, json={
+    manual = client.post('/api/transactions', headers=admin_headers, json={'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         'transaction_type': 'WASTAGE_SETTLEMENT', 'karigar_id': 1,
         'gross_weight': '1.900', 'purity_percent': '91.60',
         'item_description': 'Manual deduction must be rejected',
@@ -129,7 +129,7 @@ def test_controlled_vault_karigar_wastage_lifecycle(client, clerk_token, finance
     assert Decimal(str(k1_after_wastage["current_balance_fine"])) == Decimal("44.289")
 
     # Step 5: Receipt 3.100g scrap
-    rcpt_scrap_payload = {
+    rcpt_scrap_payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "karigar_id": 1,
         "transaction_type": "RECEIPT_SCRAP",
         "gross_weight": "3.100",
@@ -167,7 +167,7 @@ def test_daily_stock_summary_api_reconciliation(client, clerk_token, finance_tok
     Tests that the GET /api/transactions/daily-summary endpoint returns
     reconciled vault custody, karigar custody, and physical company totals.
     """
-    headers = {"Authorization": f"Bearer {clerk_token}"}
+    headers = {"Authorization": f"Bearer {finance_token}"}
 
     res = client.get("/api/transactions/daily-summary", headers=headers)
     assert res.status_code == 200
@@ -186,7 +186,7 @@ def test_daily_stock_summary_api_reconciliation(client, clerk_token, finance_tok
     assert Decimal(str(data["total_workshop_gold_fine"])) == Decimal("1770.229")
 
     # Now execute a 50.000g issue
-    res_issue = client.post("/api/transactions", json={
+    res_issue = client.post("/api/transactions", json={'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "karigar_id": 2,
         "transaction_type": "ISSUE",
         "gross_weight": "50.000",

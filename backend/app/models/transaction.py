@@ -30,6 +30,9 @@ class GoldTransaction(Base):
     created_by_user = relationship("User")
 
     item_description = Column(String(255), nullable=False)
+    job_number = Column(String(80), nullable=True, index=True)
+    item_category = Column(String(30), nullable=True)
+    huid = Column(String(6), nullable=True)
     
     # Gold measurements with exact Decimal precision
     # Stored weights in grams to 3 decimal places (e.g. 125.450 g)

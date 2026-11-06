@@ -3,9 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/Table';
 import { formatWeight, formatPurity, formatDateTime } from '../utils/formatters';
+import { Button } from '../components/ui/Button';
+import { AlertBanner } from '../components/ui/AlertBanner';
 
 export const VaultInventory: React.FC = () => {
-  const { data: inventory, isLoading } = useQuery({
+  const { data: inventory, isLoading, isError, refetch } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => api.getInventory(),
   });
@@ -14,13 +16,14 @@ export const VaultInventory: React.FC = () => {
     <div className="space-y-6">
       <div className="border-b border-parchment-300 pb-4">
         <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
-          Central Vault Gold Inventory
+          Opening Inventory Lots
         </h2>
         <p className="text-xs text-charcoal-600 mt-0.5">
-          Pure 24K bullion ingots, alloy grain stocks, melting scrap, and refinery lots.
+          Baseline bullion, grain, scrap and refinery lots. Use Daily Stock Statement for current custody after ledger movements.
         </p>
       </div>
 
+      {isError && <div role="alert"><AlertBanner type="danger" message="Opening inventory could not be loaded." /><Button size="sm" onClick={() => refetch()}>Retry</Button></div>}
       <Table>
         <TableHead>
           <TableRow>
@@ -31,7 +34,7 @@ export const VaultInventory: React.FC = () => {
             <TableHeaderCell align="right">Purity %</TableHeaderCell>
             <TableHeaderCell align="right">Fine Gold (Au)</TableHeaderCell>
             <TableHeaderCell>Storage Location</TableHeaderCell>
-            <TableHeaderCell>Last Reconciled</TableHeaderCell>
+            <TableHeaderCell>Last Updated</TableHeaderCell>
           </TableRow>
         </TableHead>
         <TableBody>

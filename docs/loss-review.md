@@ -2,8 +2,9 @@
 
 Loss Alerts now separates open reviews from approved write-offs. Only flagged
 ornament receipts are counted as alerts; generated wastage settlements are not
-separate incidents. Staff can inspect receipts and linked accounting entries.
-Only admin/Finance Head can approve a loss, with investigation notes of 10–2000
+separate incidents. Finance and owner can inspect review evidence. Other roles
+receive operational slips without review flags or investigation notes.
+Only admin/owner/Finance Head can approve a loss, with investigation notes of 10–2000
 characters and explicit confirmation. Scale status reflects the stored value.
 
 Assumption: the demo supports a full write-off of the receipt's excess gross
@@ -12,9 +13,9 @@ business policy, not a confirmed client requirement. Partial settlements, cash
 recovery, rejection/reopening and approval of recovered gold are not supported.
 Record recovered gold as a physical receipt, then investigate remaining custody;
 this workflow refuses a write-off exceeding available gross or fine gold.
-Aggregate custody cannot establish whether a recovery belongs to this particular
-job; Finance must verify that in the investigation. Job-level allocation remains
-future work.
+Per-job and aggregate custody checks prevent deductions beyond remaining stock.
+Finance must still verify whether an earlier recovery is relevant to this
+investigation; the software does not infer intent from a physical return.
 
 POST /api/loss-alerts/{id}/write-off creates one LOSS_ADJUSTMENT linked to the
 original receipt. The server computes weights from the stored variance. Creator,

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 import logging
 from contextlib import asynccontextmanager
 from decimal import Decimal
@@ -49,7 +50,7 @@ def seed_initial_data():
                     email="finance@karigarflow.com",
                     hashed_password=get_password_hash("Finance@123"),
                     full_name="K. Ramanathan (Finance Head)",
-                    role=UserRole.ADMIN.value,
+                    role=UserRole.FINANCE_HEAD.value,
                     is_active=True
                 )
                 
@@ -92,6 +93,7 @@ def seed_initial_data():
                         phone=p["phone"],
                         specialization=p["specialization"],
                         benchmark_wastage_percent=p["benchmark_wastage_percent"],
+                        wastage_by_category={'general': str(p['benchmark_wastage_percent']), 'necklace': '3.00', 'bangle': '2.00', 'chain': '2.20', 'ring': '1.50'},
                         opening_balance_gross=p["opening_balance_gross"],
                         opening_balance_fine=p["opening_balance_fine"],
                         user_id=karigar_user.id if idx == 0 else None,
@@ -122,7 +124,11 @@ def seed_initial_data():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing KarigarFlow backend database tables...")
-    seed_initial_data()
+    if settings.SEED_DEMO_DATA:
+        seed_initial_data()
+        from database.seed.reference_demo import seed_reference_demo
+        with SessionLocal() as db:
+            seed_reference_demo(db)
     yield
     logger.info("KarigarFlow backend shutting down...")
 
@@ -155,9 +161,16 @@ app.include_router(inventory.router, prefix="/api")
 
 @app.get("/")
 def root():
+    if settings.FRONTEND_DIST:
+        return FileResponse(Path(settings.FRONTEND_DIST) / 'index.html')
     return {
         "app": "KarigarFlow ERP",
         "description": "Internal Jewellery Workshop Operations & Gold Accounting",
         "docs_url": "/docs",
         "health_check": "/api/health"
     }
+
+
+if settings.FRONTEND_DIST:
+    from app.web import SPAStaticFiles
+    app.mount('/', SPAStaticFiles(directory=settings.FRONTEND_DIST, html=True), name='frontend')

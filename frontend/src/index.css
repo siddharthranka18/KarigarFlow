@@ -47,6 +47,8 @@
   .stock-statement thead { display: table-header-group; }
 }
 
+[lang="ta"] { font-family: 'Nirmala UI', 'Latha', sans-serif; line-height: 1.7; }
+
 @layer components {
   /* Workshop Ledger Card */
   .ledger-card {

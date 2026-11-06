@@ -87,6 +87,9 @@ class ApiClient {
 
   async createTransaction(data: {
     transaction_type: string;
+    job_number: string;
+    item_category: string;
+    huid?: string;
     karigar_id?: number;
     item_description: string;
     gross_weight: number | string;
@@ -117,6 +120,18 @@ class ApiClient {
 
   async getStockStatement(date: string): Promise<StockStatement> {
     return this.request(`/stock-statement?statement_date=${encodeURIComponent(date)}`);
+  }
+
+  async updateAgreements(id: number, wastage_by_category: Record<string, string>): Promise<Karigar> {
+    return this.request(`/karigars/${id}/agreements`, { method: 'PUT', body: JSON.stringify({ wastage_by_category }) });
+  }
+
+  async getReviewSummary(): Promise<{ open_count: number; drift_count: number }> {
+    return this.request('/loss-alerts/summary');
+  }
+
+  async getDriftReviews(): Promise<{ karigar_id: number; karigar_name: string; item_category: string; baseline_percent: string; recent_percent: string; increase_points: string; message: string; slip_ids: number[] }[]> {
+    return this.request('/loss-alerts/drift');
   }
 
   async getLossAlerts(status: 'open' | 'resolved'): Promise<LossAlertRecord[]> {

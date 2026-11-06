@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, Fore
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
+from sqlalchemy import JSON
 
 class Karigar(Base):
     __tablename__ = "karigars"
@@ -12,6 +13,7 @@ class Karigar(Base):
     phone = Column(String(50), nullable=True)
     specialization = Column(String(100), default="General Jewellery")
     benchmark_wastage_percent = Column(Numeric(5, 2), default=2.00, nullable=False)
+    wastage_by_category = Column(JSON, default=dict, nullable=False)
     opening_balance_gross = Column(Numeric(10, 3), default=0.000, nullable=False)
     opening_balance_fine = Column(Numeric(10, 3), default=0.000, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

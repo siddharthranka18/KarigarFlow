@@ -129,6 +129,7 @@ export const Login: React.FC = () => {
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
+                <button type="button" onClick={() => handleSelectDemoUser('owner@karigarflow.com', 'Owner@123')} className="text-left p-2 rounded-xs border border-parchment-300 bg-parchment-50 hover:bg-brass-50"><div className="font-semibold">Managing Partner / Owner</div><div className="text-[10px] font-mono">owner@karigarflow.com</div></button>
                 <button
                   type="button"
                   onClick={() => handleSelectDemoUser('finance@karigarflow.com', 'Finance@123')}

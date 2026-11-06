@@ -5,33 +5,31 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/version-sw.mjs",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.9.0",
     "@tanstack/react-query": "^5.59.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.453.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-hook-form": "^7.53.0",
-    "react-router-dom": "^6.27.0",
+    "react-router-dom": "^7.18.5",
     "recharts": "^2.13.0",
-    "tailwind-merge": "^2.5.4",
-    "zod": "^3.23.8"
+    "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.2",
+    "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
-    "vite": "^5.4.9"
+    "vite": "^7.3.7"
   }
 }
-

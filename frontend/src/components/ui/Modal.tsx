@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useId } from 'react';
 import { X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -20,19 +20,33 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'lg',
 }) => {
+  const dialog = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const focusable = () => Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href], [tabindex="0"]') || []).filter(el => el.offsetParent !== null);
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') close.current();
+      if (e.key === 'Tab') {
+        const elements = focusable();
+        const first = elements[0], last = elements[elements.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
     };
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       window.addEventListener('keydown', handleKeyDown);
+      (focusable()[0] || dialog.current)?.focus();
     }
     return () => {
       document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleKeyDown);
+      if (isOpen) previous?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -54,6 +68,11 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Modal Dialog */}
       <div
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className={twMerge(
           clsx(
             'relative bg-white border border-parchment-300 rounded-sm shadow-xl w-full z-10 overflow-hidden max-h-[90vh] flex flex-col',
@@ -65,10 +84,11 @@ export const Modal: React.FC<ModalProps> = ({
         <div className="relative border-b border-parchment-300 px-5 py-4 bg-[#FAF7F0] flex items-center justify-between">
           <div className="absolute top-0 left-0 right-0 h-1 bg-brass-600" />
           <div>
-            <h3 className="text-base font-semibold text-charcoal-900 tracking-tight">{title}</h3>
+            <h3 id={titleId} className="text-base font-semibold text-charcoal-900 tracking-tight">{title}</h3>
             {subtitle && <p className="text-xs text-charcoal-600 mt-0.5">{subtitle}</p>}
           </div>
           <button
+            aria-label="Close dialog"
             onClick={onClose}
             className="text-charcoal-400 hover:text-charcoal-700 transition-colors p-1 rounded-sm focus:outline-none"
           >

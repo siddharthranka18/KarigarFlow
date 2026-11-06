@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './features/auth/AuthContext';
+import { AuthProvider, useAuth } from './features/auth/AuthContext';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { MainLayout } from './layouts/MainLayout';
 import { Login } from './pages/Login';
@@ -11,6 +11,18 @@ import { Transactions } from './pages/Transactions';
 import { DailyStock } from './pages/DailyStock';
 import { LossAlerts } from './pages/LossAlerts';
 import { VaultInventory } from './pages/VaultInventory';
+import { WorkshopOverview } from './pages/WorkshopOverview';
+import { KarigarPortal } from './pages/KarigarPortal';
+
+function Home() {
+  const { isOwner, isKarigar } = useAuth();
+  return isKarigar ? <KarigarPortal /> : isOwner ? <Dashboard /> : <WorkshopOverview />;
+}
+
+function Slips() {
+  const { isKarigar } = useAuth();
+  return isKarigar ? <KarigarPortal /> : <Transactions />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,13 +50,13 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={<Home />} />
               <Route path="karigars" element={<Karigars />} />
-              <Route path="slips" element={<Transactions />} />
+              <Route path="slips" element={<Slips />} />
               <Route path="transactions" element={<Navigate to="/slips" replace />} />
-              <Route path="daily-stock" element={<DailyStock />} />
-              <Route path="loss-alerts" element={<LossAlerts />} />
-              <Route path="inventory" element={<VaultInventory />} />
+              <Route path="daily-stock" element={<ProtectedRoute allowedRoles={['owner']}><DailyStock /></ProtectedRoute>} />
+              <Route path="loss-alerts" element={<ProtectedRoute allowedRoles={['owner', 'finance_head']}><LossAlerts /></ProtectedRoute>} />
+              <Route path="inventory" element={<ProtectedRoute allowedRoles={['owner']}><VaultInventory /></ProtectedRoute>} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

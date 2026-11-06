@@ -59,7 +59,7 @@ def test_karigar_cannot_access_daily_stock_summary(karigar_token):
 # 5. Karigar Boundary: Cannot create gold slips
 def test_karigar_cannot_create_transaction_slip(karigar_token):
     headers = {"Authorization": f"Bearer {karigar_token}"}
-    payload = {
+    payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "ISSUE",
         "karigar_id": 1,
         "item_description": "Attempted self-issue",
@@ -80,7 +80,7 @@ def test_finance_head_full_access(finance_token):
 def test_duplicate_submission_idempotent(clerk_token):
     headers = {"Authorization": f"Bearer {clerk_token}"}
     idemp_key = "test-sec-idemp-101"
-    payload = {
+    payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "ISSUE",
         "karigar_id": 3,
         "item_description": "22K Idempotency Guard Test Lot",
@@ -104,7 +104,7 @@ def test_duplicate_submission_idempotent(clerk_token):
 def test_receipt_exceeding_balance_blocked(clerk_token):
     headers = {"Authorization": f"Bearer {clerk_token}"}
     # Karigar 4 has around 30.5g opening balance. Attempting to return 500g must fail
-    payload = {
+    payload = {'job_number': 'OPENING', 'item_category': 'general', 'scale_reading_confirmed': True,
         "transaction_type": "RECEIPT_ORNAMENT",
         "karigar_id": 4,
         "item_description": "Impossible excessive return",

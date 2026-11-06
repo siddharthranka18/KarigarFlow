@@ -24,6 +24,8 @@ from app.services.gold_calculations import (
 )
 from app.services.inventory_service import compute_vault_custody_position
 from app.services.loss_alerts import unresolved_loss_conditions
+from app.services.visibility import visible_transaction
+from app.services.idempotency import replay_transaction
 from app.core.config import settings
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -38,6 +40,8 @@ def list_transactions(
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(GoldTransaction)
+    if current_user.role not in {'admin', 'owner'}:
+        query = query.filter(GoldTransaction.transaction_type != 'PURCHASE')
 
     # Karigar role can ONLY see their own transactions (Assumption 3)
     if current_user.role == UserRole.KARIGAR.value:
@@ -52,9 +56,11 @@ def list_transactions(
         query = query.filter(GoldTransaction.transaction_type == transaction_type)
 
     if loss_alerts_only:
+        if current_user.role not in {'admin', 'owner', 'finance_head'}:
+            raise HTTPException(status_code=403, detail='Loss reviews are restricted to Finance and owner')
         query = query.filter(*unresolved_loss_conditions())
 
-    return query.order_by(GoldTransaction.created_at.desc()).limit(limit).all()
+    return [visible_transaction(tx, current_user) for tx in query.order_by(GoldTransaction.created_at.desc()).limit(limit).all()]
 
 @router.post("", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
 def create_transaction(
@@ -70,6 +76,8 @@ def create_transaction(
 ):
     if payload.transaction_type not in {'ISSUE', 'RECEIPT_ORNAMENT', 'RECEIPT_SCRAP', 'RECEIPT_DUST', 'PURCHASE'}:
         raise HTTPException(status_code=400, detail='This transaction type requires its dedicated approval workflow')
+    if payload.transaction_type == 'PURCHASE' and current_user.role not in {'admin', 'owner'}:
+        raise HTTPException(status_code=403, detail='External stock purchases are owner-only')
     if any(key and key.startswith('loss-resolution:') for key in (idempotency_key_header, payload.idempotency_key)):
         raise HTTPException(status_code=400, detail='Reserved idempotency key')
 
@@ -79,8 +87,10 @@ def create_transaction(
         existing_tx = db.query(GoldTransaction).filter(GoldTransaction.idempotency_key == idemp_key).first()
         if existing_tx:
             # Idempotent replay: return existing transaction without creating duplicate entry
-            return existing_tx
+            return replay_transaction(existing_tx, payload, current_user)
 
+    if not payload.scale_reading_confirmed:
+        raise HTTPException(status_code=400, detail='Explicit human confirmation of weight and purity is required')
     # Photo proposals come from immutable server evidence, never browser values.
     photo_url = None
     if payload.scale_reading_id:
@@ -112,11 +122,33 @@ def create_transaction(
         if not karigar:
             raise HTTPException(status_code=404, detail="Karigar not found")
 
+    agreements = (karigar.wastage_by_category or {'general': str(karigar.benchmark_wastage_percent)}) if karigar else {}
+    agreed = Decimal(str(agreements.get(payload.item_category, '-1')))
+    parent_issue = None
+    if karigar and not karigar.is_active:
+        raise HTTPException(status_code=400, detail='Karigar is inactive')
+    if karigar and payload.job_number != 'OPENING':
+        parent_issue = db.query(GoldTransaction).filter(
+            GoldTransaction.karigar_id == karigar.id, GoldTransaction.job_number == payload.job_number,
+            GoldTransaction.transaction_type == 'ISSUE').order_by(GoldTransaction.id).first()
+        if (not parent_issue and payload.transaction_type.startswith('RECEIPT')) or (parent_issue and parent_issue.item_category != payload.item_category):
+            raise HTTPException(status_code=400, detail='Receipt must match an issued job and item category')
+        if parent_issue:
+            agreed = Decimal(str(parent_issue.allowed_wastage_percent))
+    if karigar and agreed < 0:
+        raise HTTPException(status_code=400, detail='No agreed wastage percentage for this item category')
+    if payload.transaction_type == 'RECEIPT_ORNAMENT' and payload.allowed_wastage_percent not in (None, Decimal('0'), agreed):
+        raise HTTPException(status_code=400, detail='Wastage allowance must match the agreed job/category percentage')
+    if payload.related_slip_number and karigar:
+        related = db.query(GoldTransaction).filter_by(slip_number=payload.related_slip_number, karigar_id=karigar.id, job_number=payload.job_number).first()
+        if not related:
+            raise HTTPException(status_code=400, detail='Related slip must belong to the same karigar and job')
+
     # A concurrent retry may have finished while we waited for the custody lock.
     if idemp_key:
         existing_tx = db.query(GoldTransaction).filter(GoldTransaction.idempotency_key == idemp_key).first()
         if existing_tx:
-            return existing_tx
+            return replay_transaction(existing_tx, payload, current_user)
 
     # 3. Safe decimal calculations
     net_weight = calculate_net_weight(payload.gross_weight, payload.stone_weight)
@@ -125,7 +157,7 @@ def create_transaction(
 
     fine_weight = calculate_fine_gold(net_weight, payload.purity_percent)
 
-    allowed_pct = payload.allowed_wastage_percent or Decimal("0.00")
+    allowed_pct = agreed if karigar else Decimal('0.00')
     actual_wastage = payload.actual_wastage_weight or Decimal("0.000")
     allowed_wastage_weight = round_weight((payload.gross_weight * allowed_pct) / Decimal("100.00"))
     legitimate_wastage = (
@@ -134,6 +166,12 @@ def create_transaction(
         else Decimal("0.000")
     )
     wastage_fine = calculate_fine_gold(legitimate_wastage, payload.purity_percent)
+
+    if payload.transaction_type == 'ISSUE':
+        db.query(GoldInventory).with_for_update().all()
+        vault = compute_vault_custody_position(db)
+        if payload.gross_weight > vault.closing_central_vault_gross or fine_weight > vault.closing_central_vault_fine:
+            raise HTTPException(status_code=400, detail='Issue exceeds available central vault gold')
 
     # 4. Validate sufficient balance on receipts
     if karigar and payload.transaction_type in [
@@ -162,6 +200,12 @@ def create_transaction(
             settled_txs
         )
         try:
+            if payload.job_number != 'OPENING':
+                job_issues = [t for t in issued_txs if t.job_number == payload.job_number]
+                job_returns = [t for t in settled_txs if t.job_number == payload.job_number]
+                job_balance = compute_karigar_balance(Decimal(0), Decimal(0), job_issues, job_returns)
+                if payload.gross_weight + legitimate_wastage > job_balance.closing_balance_gross or fine_weight + wastage_fine > job_balance.closing_balance_fine:
+                    raise ValueError('Receipt and approved wastage exceed this job balance')
             validate_transaction_balance(
                 current_gross_balance=current_bal.closing_balance_gross,
                 transaction_type=payload.transaction_type,
@@ -199,11 +243,14 @@ def create_transaction(
     tx = GoldTransaction(
         slip_number=slip_number,
         idempotency_key=idemp_key,
-        related_slip_number=payload.related_slip_number,
+        related_slip_number=payload.related_slip_number or (parent_issue.slip_number if parent_issue else None),
         transaction_type=payload.transaction_type,
         karigar_id=payload.karigar_id,
         created_by_user_id=current_user.id,
         item_description=payload.item_description,
+        job_number=payload.job_number,
+        item_category=payload.item_category,
+        huid=payload.huid,
         gross_weight=payload.gross_weight,
         stone_weight=payload.stone_weight,
         net_weight=net_weight,
@@ -235,6 +282,8 @@ def create_transaction(
                 karigar_id=payload.karigar_id,
                 created_by_user_id=current_user.id,
                 item_description=f"Approved Craft Wastage Allowance for Slip {tx.slip_number}",
+                job_number=payload.job_number,
+                item_category=payload.item_category,
                 gross_weight=legitimate_wastage,
                 stone_weight=Decimal("0.000"),
                 net_weight=legitimate_wastage,
@@ -258,22 +307,20 @@ def create_transaction(
         if idemp_key:
             existing_tx = db.query(GoldTransaction).filter(GoldTransaction.idempotency_key == idemp_key).first()
             if existing_tx:
-                return existing_tx
+                return replay_transaction(existing_tx, payload, current_user)
         raise HTTPException(status_code=400, detail="Database integrity constraint violation")
     except Exception:
         db.rollback()
         raise
 
-    return tx
+    return visible_transaction(tx, current_user)
 
 @router.get("/daily-summary", response_model=DailyStockSummary)
 def get_daily_stock_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles([
         UserRole.ADMIN.value,
-        UserRole.FINANCE_HEAD.value,
-        UserRole.WORKSHOP_MANAGER.value,
-        UserRole.ISSUE_CLERK.value
+        UserRole.OWNER.value
     ]))
 ):
     """
