@@ -10,7 +10,8 @@ import { AlertBanner } from '../components/ui/AlertBanner';
 import { formatWeight, formatPurity, formatDateTime } from '../utils/formatters';
 import { useAuth } from '../features/auth/AuthContext';
 import { FilePlus, Camera, CheckCircle2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
-import { TransactionType } from '../types';
+import { TransactionType, ScaleReading } from '../types';
+import { ScalePhoto } from '../components/ScalePhoto';
 import { SlipInspection } from '../components/SlipInspection';
 
 export const Transactions: React.FC = () => {
@@ -30,7 +31,9 @@ export const Transactions: React.FC = () => {
   const [purityPercent, setPurityPercent] = useState('91.60');
   const [allowedWastagePercent, setAllowedWastagePercent] = useState('2.00');
   const [actualWastageWeight, setActualWastageWeight] = useState('0.000');
-  const [scaleReadingConfirmed, setScaleReadingConfirmed] = useState(true);
+  const [scaleReadingConfirmed, setScaleReadingConfirmed] = useState(false);
+  const [scaleReading, setScaleReading] = useState<ScaleReading | null>(null);
+  const [readingPhoto, setReadingPhoto] = useState(false);
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -84,7 +87,8 @@ export const Transactions: React.FC = () => {
     setPurityPercent('91.60');
     setAllowedWastagePercent('2.00');
     setActualWastageWeight('0.000');
-    setScaleReadingConfirmed(true);
+    setScaleReadingConfirmed(false);
+    setScaleReading(null);
     setNotes('');
     setFormError(null);
     submission.current = null;
@@ -99,7 +103,13 @@ export const Transactions: React.FC = () => {
       return;
     }
 
-    if (createMutation.isPending) return;
+    if (createMutation.isPending || readingPhoto) return;
+    if (!scaleReadingConfirmed) { setFormError('Confirm the scale reading before saving.'); return; }
+    if (scaleReading && (scaleReading.status !== 'ready' || Number(scaleReading.weight) !== Number(grossWeight) ||
+      (scaleReading.purity !== null && Number(scaleReading.purity) !== Number(purityPercent)))) {
+      setFormError('Typed values do not match the photo, or the reading is uncertain. Retake the photo before saving.');
+      return;
+    }
 
     const payload = {
       transaction_type: slipType,
@@ -111,6 +121,7 @@ export const Transactions: React.FC = () => {
       allowed_wastage_percent: parseFloat(allowedWastagePercent),
       actual_wastage_weight: parseFloat(actualWastageWeight),
       scale_reading_confirmed: scaleReadingConfirmed,
+      scale_reading_id: scaleReading?.id,
       notes: notes.trim(),
     };
     const fingerprint = JSON.stringify(payload);
@@ -266,7 +277,7 @@ export const Transactions: React.FC = () => {
       {/* Create New Gold Slip Modal */}
       <Modal
         isOpen={isSlipModalOpen}
-        onClose={() => setIsSlipModalOpen(false)}
+        onClose={() => { if (!readingPhoto && !createMutation.isPending) setIsSlipModalOpen(false); }}
         title="Record Gold Issue / Receipt Slip"
         subtitle="Precision workshop slip generation. Automatic fine-gold & wastage tolerance auditing."
         maxWidth="xl"
@@ -282,6 +293,10 @@ export const Transactions: React.FC = () => {
         )}
 
         <form onSubmit={handleFormSubmit} className="space-y-4">
+          <fieldset disabled={createMutation.isPending} className="space-y-4">
+          <ScalePhoto reading={scaleReading} onBusy={setReadingPhoto}
+            onReading={value => { setScaleReading(value); setScaleReadingConfirmed(false); }}
+            onValues={(weight, purity) => { setGrossWeight(weight); if (purity) setPurityPercent(purity); }} />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-charcoal-700 uppercase tracking-wider mb-1.5">
@@ -342,7 +357,7 @@ export const Transactions: React.FC = () => {
               required
               placeholder="0.000"
               value={grossWeight}
-              onChange={(e) => setGrossWeight(e.target.value)}
+              onChange={(e) => { setGrossWeight(e.target.value); setScaleReadingConfirmed(false); }}
             />
 
             <Input
@@ -363,7 +378,7 @@ export const Transactions: React.FC = () => {
               required
               placeholder="91.60"
               value={purityPercent}
-              onChange={(e) => setPurityPercent(e.target.value)}
+              onChange={(e) => { setPurityPercent(e.target.value); setScaleReadingConfirmed(false); }}
             />
           </div>
 
@@ -401,7 +416,7 @@ export const Transactions: React.FC = () => {
           <div className="p-3 bg-brass-50/60 border border-brass-200 rounded-sm flex items-center justify-between">
             <div>
               <div className="text-[10px] font-mono uppercase text-brass-800 font-semibold">
-                Pure Fine Gold Calculation (Backend Verified)
+                Fine Gold Preview — verified by server on save
               </div>
               <div className="text-xs text-charcoal-600 mt-0.5">
                 Formula: ({grossNum.toFixed(3)}g - {stoneNum.toFixed(3)}g) × {purityNum.toFixed(2)}% ÷ 100
@@ -430,7 +445,7 @@ export const Transactions: React.FC = () => {
                 Human Confirmation of Scale Reading
               </span>
               <span>
-                Verified on calibrated Sartorius precision workshop scale (3 decimals). Human confirmation required by ERP compliance rule.
+                I checked the displayed weight and tested purity against the scale or attached photo. An attached photo mismatch blocks saving.
               </span>
             </label>
           </div>
@@ -443,7 +458,7 @@ export const Transactions: React.FC = () => {
           />
 
           <div className="flex justify-end gap-2 pt-3 border-t border-parchment-200">
-            <Button variant="ghost" size="sm" type="button" onClick={() => setIsSlipModalOpen(false)}>
+            <Button variant="ghost" size="sm" type="button" disabled={readingPhoto} onClick={() => setIsSlipModalOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -451,10 +466,12 @@ export const Transactions: React.FC = () => {
               size="sm"
               type="submit"
               isLoading={createMutation.isPending}
+              disabled={readingPhoto || !scaleReadingConfirmed || (scaleReading !== null && scaleReading.status !== 'ready')}
             >
               Sign & Record Slip
             </Button>
           </div>
+          </fieldset>
         </form>
       </Modal>
     </div>

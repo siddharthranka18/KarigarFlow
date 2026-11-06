@@ -11,6 +11,7 @@ from app.models.transaction import GoldTransaction, TransactionType
 from app.models.karigar import Karigar
 from app.models.inventory import GoldInventory
 from app.models.user import User, UserRole
+from app.models.scale_reading import ScaleReading
 from app.schemas.transaction import TransactionCreate, TransactionResponse, DailyStockSummary
 from app.api.dependencies import get_current_user, require_roles
 from app.services.gold_calculations import (
@@ -79,6 +80,20 @@ def create_transaction(
         if existing_tx:
             # Idempotent replay: return existing transaction without creating duplicate entry
             return existing_tx
+
+    # Photo proposals come from immutable server evidence, never browser values.
+    photo_url = None
+    if payload.scale_reading_id:
+        reading = db.get(ScaleReading, payload.scale_reading_id)
+        if not reading or reading.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail='Scale reading not found')
+        if reading.status != 'ready' or not payload.scale_reading_confirmed or 'scale_reading_confirmed' not in payload.model_fields_set:
+            raise HTTPException(status_code=400, detail='A clear reading and explicit human confirmation are required')
+        if reading.weight != payload.gross_weight or (reading.purity is not None and reading.purity != payload.purity_percent):
+            raise HTTPException(status_code=409, detail='Typed weight or purity does not match the photo reading. Retake the photo before saving.')
+        photo_url = f'/api/scale-readings/{reading.id}'
+    elif payload.scale_image_url:
+        raise HTTPException(status_code=400, detail='Upload the photo through scale verification first')
 
     # 2. Validate Karigar
     karigar = None
@@ -199,7 +214,7 @@ def create_transaction(
         wastage_variance_weight=wastage_variance,
         is_loss_alert=is_alert,
         scale_reading_confirmed=payload.scale_reading_confirmed,
-        scale_image_url=payload.scale_image_url,
+        scale_image_url=photo_url,
         notes=payload.notes
     )
 

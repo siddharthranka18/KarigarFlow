@@ -61,6 +61,16 @@ export interface GoldTransaction {
   created_at: string;
 }
 
+export interface ScaleReading {
+  id: string;
+  status: 'ready' | 'uncertain';
+  weight: string | null;
+  purity: string | null;
+  confidence: number;
+  raw_text: string;
+  image_url: string;
+}
+
 export interface LossAlertRecord {
   alert: GoldTransaction;
   resolution: GoldTransaction | null;

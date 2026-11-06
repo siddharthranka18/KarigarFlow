@@ -1,4 +1,4 @@
-import { Karigar, GoldTransaction, TransactionDetail, DailyStockSummary, InventoryItem, StockStatement, LossAlertRecord } from '../types';
+import { Karigar, GoldTransaction, TransactionDetail, DailyStockSummary, InventoryItem, StockStatement, LossAlertRecord, ScaleReading } from '../types';
 
 const API_BASE = '/api';
 
@@ -96,6 +96,7 @@ class ApiClient {
     actual_wastage_weight?: number | string;
     scale_reading_confirmed?: boolean;
     scale_image_url?: string;
+    scale_reading_id?: string;
     idempotency_key?: string;
     related_slip_number?: string;
     notes?: string;
@@ -126,6 +127,24 @@ class ApiClient {
     return this.request(`/loss-alerts/${id}/write-off`, {
       method: 'POST', body: JSON.stringify({ investigation_notes, confirm_write_off: true }),
     });
+  }
+
+  async readScale(photo: File): Promise<ScaleReading> {
+    const body = new FormData();
+    body.append('photo', photo);
+    const token = this.getToken();
+    const result = await fetch(`${API_BASE}/scale-readings`, {
+      method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body,
+    });
+    if (!result.ok) {
+      const error = await result.json().catch(() => ({}));
+      throw new Error(typeof error.detail === 'string' ? error.detail : 'Photo could not be read. Retry with a clear JPEG, PNG or WebP image.');
+    }
+    return result.json();
+  }
+
+  async getScaleReading(id: string): Promise<ScaleReading> {
+    return this.request(`/scale-readings/${encodeURIComponent(id)}`);
   }
 
   // Inventory

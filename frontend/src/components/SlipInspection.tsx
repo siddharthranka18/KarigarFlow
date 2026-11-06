@@ -18,6 +18,10 @@ export function SlipInspection({ id, onClose, onNavigate }: Props) {
     retry: false,
   });
   const tx = data?.transaction;
+  const photoId = tx?.scale_image_url?.match(/^\/api\/scale-readings\/([a-f0-9-]+)$/)?.[1];
+  const photo = useQuery({
+    queryKey: ['scale-reading', photoId], queryFn: () => api.getScaleReading(photoId!), enabled: Boolean(photoId), retry: false,
+  });
   return (
     <Modal isOpen onClose={onClose} title={tx?.slip_number || 'Slip inspection'}
       subtitle="Stored ledger values and directly linked accounting entries" maxWidth="2xl">
@@ -53,7 +57,10 @@ export function SlipInspection({ id, onClose, onNavigate }: Props) {
           <p>Recorded by: <strong>{data.recorded_by_name || 'Not recorded'}</strong></p>
           <p>Created: {formatDateTime(tx.created_at)}</p>
           <p className="whitespace-pre-wrap break-words">Notes: {tx.notes || 'No notes recorded.'}</p>
-          <p>{tx.scale_image_url ? 'A scale evidence reference is recorded. Image verification is not available in this view.' : 'No scale photo attached. Confirmation records a human check; it does not verify an image.'}</p>
+          <p>{tx.scale_image_url ? 'Scale evidence attached. Confirmation records a human review of the OCR proposal.' : 'No scale photo attached. Confirmation records a manual human check.'}</p>
+          {photo.isLoading && photoId && <p role="status">Loading scale evidence…</p>}
+          {photo.isError && <p role="alert">Scale photo could not be loaded or is outside your access.</p>}
+          {photo.data && <img src={photo.data.image_url} alt="Recorded scale photo evidence" className="max-h-64 w-full object-contain border border-parchment-300" />}
         </div>
         <section className="border-t border-parchment-300 pt-3 space-y-2">
           <h4 className="text-sm font-semibold text-charcoal-900">Linked accounting entries</h4>

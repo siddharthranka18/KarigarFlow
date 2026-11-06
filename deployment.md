@@ -1,5 +1,15 @@
 # KarigarFlow Deployment Guide
 
+## Scale photo support
+
+Install the updated backend requirements, then run `python -m alembic upgrade head`
+from `backend` before starting the app. Local RapidOCR inference needs no API key
+or extra environment variables. Model weights ship with the installed OCR wheel;
+do not add the virtual environment or model binaries to Git or the submission ZIP.
+Scale photos are stored in the database. Configure deployment request-body limits
+and storage/retention capacity before making uploads publicly available. See
+`docs/scale-photos.md` for input limits and verification behavior.
+
 ## 1. Prerequisites
 
 - **Python:** 3.11 or 3.12

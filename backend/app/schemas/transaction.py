@@ -14,6 +14,7 @@ class TransactionCreate(BaseModel):
     actual_wastage_weight: Optional[Decimal] = Field(default=Decimal("0.000"), ge=0)
     scale_reading_confirmed: bool = True
     scale_image_url: Optional[str] = None
+    scale_reading_id: Optional[str] = None
     idempotency_key: Optional[str] = None
     related_slip_number: Optional[str] = None
     notes: Optional[str] = None
