@@ -316,6 +316,15 @@ def get_daily_stock_summary(
     today_wastage_settled_gross = sum((Decimal(str(tx.gross_weight)) for tx in today_txs if tx.transaction_type == TransactionType.WASTAGE_SETTLEMENT.value), Decimal("0.000"))
     today_wastage_settled_fine = sum((Decimal(str(tx.fine_weight)) for tx in today_txs if tx.transaction_type == TransactionType.WASTAGE_SETTLEMENT.value), Decimal("0.000"))
     
+    cumulative_wastage_settled_gross = sum(
+        (Decimal(str(tx.gross_weight)) for tx in all_settled if tx.transaction_type == TransactionType.WASTAGE_SETTLEMENT.value),
+        Decimal("0.000")
+    )
+    cumulative_wastage_settled_fine = sum(
+        (Decimal(str(tx.fine_weight)) for tx in all_settled if tx.transaction_type == TransactionType.WASTAGE_SETTLEMENT.value),
+        Decimal("0.000")
+    )
+
     today_wastage_reported_gross = sum((Decimal(str(tx.actual_wastage_weight or 0)) for tx in today_txs if tx.transaction_type == TransactionType.RECEIPT_ORNAMENT.value), Decimal("0.000"))
     today_excess_wastage_gross = sum((Decimal(str(tx.wastage_variance_weight or 0)) for tx in today_txs if tx.is_loss_alert), Decimal("0.000"))
     
@@ -336,6 +345,8 @@ def get_daily_stock_summary(
         total_receipts_today_gross=round_weight(today_receipts_gross),
         total_legitimate_wastage_today_gross=round_weight(today_wastage_settled_gross),
         total_legitimate_wastage_today_fine=round_weight(today_wastage_settled_fine),
+        cumulative_wastage_settled_gross=round_weight(cumulative_wastage_settled_gross),
+        cumulative_wastage_settled_fine=round_weight(cumulative_wastage_settled_fine),
         total_wastage_today_gross=round_weight(today_wastage_reported_gross),
         total_excess_wastage_today_gross=round_weight(today_excess_wastage_gross),
         loss_alerts_count=total_loss_alerts_count,

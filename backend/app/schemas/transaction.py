@@ -60,6 +60,8 @@ class DailyStockSummary(BaseModel):
     total_receipts_today_gross: Decimal
     total_legitimate_wastage_today_gross: Decimal
     total_legitimate_wastage_today_fine: Decimal
+    cumulative_wastage_settled_gross: Decimal = Decimal("0.000")
+    cumulative_wastage_settled_fine: Decimal = Decimal("0.000")
     total_wastage_today_gross: Decimal
     total_excess_wastage_today_gross: Decimal = Decimal("0.000")
     loss_alerts_count: int

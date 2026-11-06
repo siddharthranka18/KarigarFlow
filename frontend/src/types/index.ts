@@ -76,6 +76,8 @@ export interface DailyStockSummary {
   total_receipts_today_gross: string;
   total_legitimate_wastage_today_gross: string;
   total_legitimate_wastage_today_fine: string;
+  cumulative_wastage_settled_gross?: string;
+  cumulative_wastage_settled_fine?: string;
   total_wastage_today_gross: string;
   total_excess_wastage_today_gross?: string;
   loss_alerts_count: number;
