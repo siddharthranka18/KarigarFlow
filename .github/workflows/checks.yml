@@ -25,7 +25,7 @@ jobs:
       - run: pip install -r backend/requirements.txt
       - name: Prepare isolated databases
         run: |
-          python -c "import psycopg2; c=psycopg2.connect(host='localhost',port=5433,user='postgres',dbname='postgres'); c.autocommit=True; q=c.cursor(); q.execute('CREATE DATABASE karigarflow_db'); q.execute('CREATE DATABASE karigarflow_test_db'); c.close()"
+          python -c "import psycopg2; c=psycopg2.connect(host='localhost',port=5433,user='postgres',dbname='postgres'); c.autocommit=True; q=c.cursor(); q.execute('CREATE DATABASE karigarflow_db'); q.execute('CREATE DATABASE karigarflow_test_db'); q.execute('CREATE DATABASE karigarflow_container_db'); c.close()"
           cd backend
           python -m alembic upgrade head
       - run: python -m pytest backend/tests -q -p no:cacheprovider
@@ -42,3 +42,12 @@ jobs:
           path: frontend/test-results
       - name: Validate deployment image
         run: docker build --tag karigarflow:ci .
+      - name: Start deployment image with hosted-style database URL
+        run: |
+          trap 'docker logs karigarflow-smoke; docker rm -f karigarflow-smoke' EXIT
+          docker run --detach --name karigarflow-smoke --network host --env DATABASE_URL=postgresql://postgres@localhost:5433/karigarflow_container_db --env ENVIRONMENT=testing --env SEED_DEMO_DATA=false --env PORT=8080 karigarflow:ci
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8080/api/health; then exit 0; fi
+            sleep 2
+          done
+          exit 1

@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, model_validator
+from pydantic import Field, model_validator, field_validator
 import secrets
 from typing import List
 from decimal import Decimal
@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(48))
     SEED_DEMO_DATA: bool = True
     FRONTEND_DIST: str = ''
+
+    @field_validator('DATABASE_URL', mode='before')
+    @classmethod
+    def explicit_postgres_driver(cls, value):
+        # Hosts supply bare PostgreSQL URLs. Select the driver we install,
+        # rather than relying on SQLAlchemy's version-dependent default.
+        if isinstance(value, str):
+            for prefix in ('postgresql://', 'postgres://'):
+                if value.startswith(prefix):
+                    return 'postgresql+psycopg2://' + value[len(prefix):]
+        return value
 
     @model_validator(mode='after')
     def production_secret(self):

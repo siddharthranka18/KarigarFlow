@@ -143,6 +143,11 @@ This is build validation, not verification of a live hosted runtime.
 
 ## Environment variables (names only)
 
+Hosted PostgreSQL URLs are normalized to the installed psycopg2 driver before
+migrations and application connections. A plain provider URL does not require
+installing psycopg separately. CI also starts the deployment image against an
+empty database using a hosted-style URL and checks /api/health.
+
 Required for hosted deployment: DATABASE_URL, SECRET_KEY, ENVIRONMENT.
 
 Optional application settings: SEED_DEMO_DATA, FRONTEND_DIST, ALLOWED_ORIGINS,
