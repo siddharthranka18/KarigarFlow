@@ -77,8 +77,13 @@ def picture(path, width, max_height=10000):
     return Image(str(path), width=width, height=height)
 
 
+story.extend([PageBreak(), Paragraph('Sign-in and stock statement', styles['ReportTitle']),
+    picture(ROOT / 'artifacts/redesign-login.png', 480, 300),
+    Paragraph('The sign-in page uses the supplied ledger example to explain the issue and return flow. Reviewers enter the demo credentials from deployment.md.', styles['CaptionSmall']),
+    picture(capture('stock-print.png'), 480, 305),
+    Paragraph('The print view puts opening custody, signed movements and closing custody on one statement. The owner can also export the same data as CSV.', styles['CaptionSmall'])])
 story.extend([PageBreak(), Paragraph('Verified interface views', styles['ReportTitle']),
-    Paragraph('Production build in Chromium against the isolated synthetic E2E database. Images document implemented behaviour; they are not client records.', styles['CaptionSmall']),
+    Paragraph('The redesigned interface running in Chromium with the isolated synthetic test database.', styles['CaptionSmall']),
     picture(capture('scale-proposal.png'), 480),
     Paragraph('The scale image is beside the OCR proposal. A typed mismatch blocks saving and human confirmation is required.', styles['CaptionSmall']),
     picture(capture('finance-review.png'), 460),
@@ -87,7 +92,7 @@ story.extend([PageBreak(), Paragraph('Phone and recovery views', styles['ReportT
 pair = Table([[picture(capture('phone-tamil-slips.png'), 205, 490), picture(capture('phone-offline-draft.png'), 205, 490)]], colWidths=[247,247])
 pair.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP')]))
 story.extend([pair, Spacer(1,12), Paragraph('Left: own Tamil balance and slips at 390px width. Right: a draft restored after an offline reload. Measurement fields stack on a phone so three-decimal weights remain readable. The modal scrolls independently; reconnecting and a new human confirmation are required before saving.', styles['ReportBody']),
-    Paragraph('Browser acceptance covered real OCR and mismatch blocking, per-user offline recovery, Finance agreements/write-off, and owner export/print. Workshop photo trials, native Tamil acceptance remain external acceptance steps. The hosted app and database health were checked separately.', styles['ReportBody'])])
+    Paragraph('Browser acceptance covered real OCR and mismatch blocking, per-user offline recovery, Finance agreements/write-off, and owner export/print. Workshop photo trials and native Tamil acceptance remain external acceptance steps. The hosted app and database health were checked separately.', styles['ReportBody'])])
 
 
 def footer(c, doc):

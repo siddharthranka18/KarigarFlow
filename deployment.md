@@ -5,8 +5,8 @@ Repository: https://github.com/siddharthranka18/KarigarFlow
 Live app: https://karigarflow-demo.onrender.com/
 
 Deployed on Render using the repository Dockerfile and Blueprint, with managed
-PostgreSQL. On 7 November 2026, the app returned HTTP 200 and /api/health reported
-healthy with the database connected. Use the demo accounts below to sign in.
+PostgreSQL. On 9 November 2026, /api/health reported a connected database and the
+live clerk login succeeded. Use the demo accounts below to sign in.
 
 ## Run locally on Windows
 
@@ -52,6 +52,9 @@ if PostgreSQL uses another port or requires a password.
 
 ## Demo accounts
 
+On the live sign-in page, enter the email and demo password manually.
+The quick role switcher appears only in local development.
+
 These published credentials are only for the synthetic reviewer demo. They are
 not production credentials for a real workshop.
 
@@ -66,8 +69,9 @@ not production credentials for a real workshop.
 
 ## Reviewer walkthrough
 
-1. Sign in as Clerk. Open the register, select a karigar and category, and enter
-   a new job number. Upload database/seed/scale-demo.png. Inspect the proposed
+1. Sign in as Clerk. Choose **New slip** on the Workshop desk, or choose
+   **Gold ledger → Create New Slip**. Select a karigar and category, and enter
+   a new job number. Upload database/seed/scale-demo.png from the repository. Inspect the proposed
    120.000g / 91.60% reading, confirm it and save an issue.
 2. Create a receipt for the same job/category. Enter gross weight and stones;
    the backend derives net and fine weights. Optionally record a six-character

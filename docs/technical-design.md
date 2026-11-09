@@ -122,13 +122,23 @@ explicitly removed. This is device recovery, not a multi-device offline ledger.
 
 ## UI decisions and validation
 
-Tabular numerals align decimals; fine balances stand out from gross weights.
-The clerk overview shows actions and recent slips rather than owner totals.
-Forms group job identity, measurements, evidence and confirmation. Destructive
-Finance approval states the exact excess and requires notes. Open reviews are
-separate from approved write-offs. Tamil cards make own slips and balances
-readable on phones, with an English toggle. Inputs have associated labels and
-dialogs have focus management, keyboard dismissal and accessible names.
+The redesigned interface uses a light sidebar, warm neutral surfaces, and brass
+for primary actions and active navigation. The serif wordmark gives the workshop
+an identity while the interface uses sans-serif type. Tabular numerals align
+weights. The sign-in page introduces the workflow through the supplied sample
+ledger, and the role home pages surface the next task.
+
+The clerk starts a slip from the Workshop desk or opens the Gold ledger. The
+form groups job details before photo evidence and measurements, and keeps its
+actions visible while scrolling. Finance sees review counts and the evidence for
+rising wastage. The owner can go directly to the stock statement and export or
+print it. The Tamil mobile view emphasises the user's own balance and slips,
+with an English toggle. Inputs have associated labels, and dialogs support
+keyboard dismissal and focus management.
+
+Sign-in returns users to the requested page if their role can access it. A clerk
+who signs in from a Loss reviews link lands on the Workshop desk. Restricted
+pages and APIs enforce their own access rules.
 
 Validation on 7 November 2026: 70 backend tests and four production-build browser
 flows passed. The frontend production build passed. npm audit reported zero known
@@ -137,9 +147,10 @@ PUBLIC. GitHub Checks for commit dbd3734 passed on Linux, including backend/brow
 checks, Docker build, container startup, migrations and a health check against an
 empty database using a hosted-style connection URL:
 https://github.com/siddharthranka18/KarigarFlow/actions/runs/42346037070
-The live Render app returned HTTP 200 and /api/health reported healthy with the
-database connected. The author also confirmed opening and checking the live app.
-These checks do not replace workshop acceptance testing.
+On 9 November 2026, the redesigned production build passed four local browser
+flows. A separate local browser check verified the clerk and Finance sign-in
+redirects. The live Render health endpoint reported a connected database, and
+the live clerk account signed in successfully.
 
 Backend regression tests cover rounding, sample fidelity, custody conservation,
 atomicity, retries, competing requests, job limits, agreement snapshots, privacy,
