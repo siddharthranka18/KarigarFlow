@@ -36,7 +36,7 @@ export function LossAlerts() {
   if (isKarigar) return <AlertBanner type="danger" message="Company loss reviews are available to workshop staff only." />;
   return <div className="space-y-5">
     <div className="border-b border-parchment-300 pb-4">
-      <h2 className="text-xl font-serif font-bold text-charcoal-900">Loss & Wastage Reviews</h2>
+      <h2 className="page-title">Loss and wastage reviews</h2>
       <p className="text-xs text-charcoal-600 mt-1">Investigate excess wastage before approving any accounting write-off.</p>
     </div>
     <AlertBanner type="info" message="Demo policy: Finance may write off the full flagged excess after investigation. This reduces karigar liability and company gold; it does not return gold to the vault. Recovered gold must be recorded as a physical receipt instead. Partial and cash settlements are not supported here." />
@@ -45,7 +45,7 @@ export function LossAlerts() {
       {drift.isLoading && <p role="status">Checking history…</p>}
       {drift.isError && <p role="alert">History review unavailable. Refresh this page to retry.</p>}
       {drift.data?.length === 0 && <p className="text-xs text-charcoal-600">No rising-wastage reviews found. Karigars with fewer than 6 comparable receipts are not scored.</p>}
-      {drift.data?.map(item => <div key={`${item.karigar_id}-${item.item_category}`} className="border-t border-parchment-200 pt-3 text-xs space-y-2"><strong>{item.karigar_name} · {item.item_category}</strong><p className="font-mono">{item.baseline_percent}% → {item.recent_percent}% (+{item.increase_points} percentage points)</p><p>{item.message}</p><div className="flex flex-wrap gap-2">{item.slip_ids.map((id, i) => <button key={id} className="underline text-brass-800" onClick={() => setInspected(id)}>Receipt {i+1}</button>)}</div></div>)}
+      {drift.data?.map(item => <div key={`${item.karigar_id}-${item.item_category}`} className="border-t border-parchment-200 pt-3 text-xs space-y-2"><strong>{item.karigar_name} · {item.item_category}</strong><p className="text-base font-semibold tabular-nums">Reported wastage rose from {item.baseline_percent}% to {item.recent_percent}%</p><p className="text-charcoal-600">Increase of {item.increase_points} percentage points</p><p>{item.message}</p><div className="flex flex-wrap gap-2">{item.slip_ids.map((id, i) => <button key={id} className="underline text-brass-800" onClick={() => setInspected(id)}>Receipt {i+1}</button>)}</div></div>)}
     </section>
     <div className="flex flex-wrap gap-2">
       {(['open', 'resolved'] as const).map(value => <Button key={value} size="sm"

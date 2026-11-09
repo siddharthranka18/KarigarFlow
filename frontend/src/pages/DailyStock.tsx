@@ -50,7 +50,7 @@ export function DailyStock() {
   return <div className="stock-statement space-y-6">
     <div className="flex flex-col sm:flex-row justify-between gap-4 border-b border-parchment-300 pb-4">
       <div>
-        <h2 className="text-xl font-serif font-bold text-charcoal-900">Daily Gold Stock Statement</h2>
+        <h2 className="page-title">Daily Gold Stock Statement</h2>
         <p className="text-xs text-charcoal-600 mt-1">Opening custody + signed movements = closing custody. All weights in grams.</p>
       </div>
       <div className="statement-controls flex flex-wrap items-center gap-2">
@@ -70,7 +70,7 @@ export function DailyStock() {
     {isError && <div role="alert"><AlertBanner type="danger" message="The stock statement could not be loaded. Check the date and connection, then refresh. Export and print are disabled." /></div>}
     {data && !isError && <>
       <div className="bg-white border border-parchment-300 p-4 space-y-2">
-        <p className="font-serif font-bold text-charcoal-900">{formatDateOnly(data.date)} · {data.timezone}</p>
+        <p className="font-bold text-charcoal-900">{formatDateOnly(data.date)} · {data.timezone}</p>
         <p className="text-xs text-charcoal-600">{data.transaction_count} ledger entries on this date, including generated settlements. Today's closing is as recorded so far.</p>
         {isFetching && <p role="status" className="text-xs text-brass-800">Refreshing statement…</p>}
         {data.transaction_count === 0 && <p className="text-xs text-charcoal-600">No movements recorded. Closing balances carry forward from opening.</p>}

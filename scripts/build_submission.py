@@ -87,14 +87,13 @@ story.extend([PageBreak(), Paragraph('Phone and recovery views', styles['ReportT
 pair = Table([[picture(capture('phone-tamil-slips.png'), 205, 490), picture(capture('phone-offline-draft.png'), 205, 490)]], colWidths=[247,247])
 pair.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP')]))
 story.extend([pair, Spacer(1,12), Paragraph('Left: own Tamil balance and slips at 390px width. Right: a draft restored after an offline reload. Measurement fields stack on a phone so three-decimal weights remain readable. The modal scrolls independently; reconnecting and a new human confirmation are required before saving.', styles['ReportBody']),
-    Paragraph('Browser acceptance covered real OCR and mismatch blocking, per-user offline recovery, Finance agreements/write-off, and owner export/print. Workshop photo trials, native Tamil acceptance and hosted verification remain external acceptance steps.', styles['ReportBody'])])
+    Paragraph('Browser acceptance covered real OCR and mismatch blocking, per-user offline recovery, Finance agreements/write-off, and owner export/print. Workshop photo trials, native Tamil acceptance remain external acceptance steps. The hosted app and database health were checked separately.', styles['ReportBody'])])
 
 
 def footer(c, doc):
     c.saveState()
     c.setFont('Helvetica', 8)
     c.setFillColor(colors.HexColor('#78716c'))
-    c.drawString(48, 28, 'KarigarFlow | Technical Design | 7 November 2026')
     c.drawRightString(A4[0]-48, 28, str(doc.page))
     c.restoreState()
 

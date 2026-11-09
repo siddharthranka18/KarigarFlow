@@ -17,8 +17,7 @@ async function apiLogin(request: APIRequestContext, email: string, password: str
 
 test('clerk verifies a real OCR proposal and mismatch blocks saving', async ({ page }, info) => {
   await login(page, 'clerk@karigarflow.com', 'Clerk@123');
-  await page.goto('/slips');
-  await page.getByRole('button', { name: 'Create New Slip' }).click();
+  await page.getByRole('link', { name: 'New slip', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.locator('select').nth(1).selectOption({ label: 'KG-CBE-001 - Anand Swamy' });
   await page.getByLabel('Job number').fill(`PW-OCR-${Date.now()}`);
@@ -37,7 +36,7 @@ test('clerk verifies a real OCR proposal and mismatch blocks saving', async ({ p
   await page.getByRole('button', { name: 'Sign & Record Slip' }).click();
   await expect(dialog).not.toBeVisible();
   await expect(page.getByText('Browser verified scale issue', { exact: true }).first()).toBeVisible();
-  const ownerLink = page.getByRole('link', { name: 'Daily Stock Statement', exact: true });
+  const ownerLink = page.getByRole('link', { name: 'Daily stock statement', exact: true });
   await expect(ownerLink).toHaveCount(0);
   await page.goto('/daily-stock');
   await expect(page.getByText('Access Restricted', { exact: true })).toBeVisible();

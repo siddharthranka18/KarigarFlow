@@ -12,7 +12,6 @@ import {
   Vault,
   Users,
   AlertTriangle,
-  FilePlus,
   Flame,
   CheckCircle2,
   RefreshCw,
@@ -89,7 +88,7 @@ export const Dashboard: React.FC = () => {
         <div className="flex items-center gap-3 text-status-danger">
           <AlertTriangle className="w-6 h-6 flex-shrink-0" />
           <div>
-            <h3 className="font-serif font-bold text-base">Unable to connect to Gold Accounting Engine</h3>
+            <h3 className="font-bold text-base">Unable to connect to Gold Accounting Engine</h3>
             <p className="text-xs text-charcoal-600 mt-0.5">
               {(summaryError as Error)?.message || 'Database connection error or network timeout.'}
             </p>
@@ -114,7 +113,7 @@ export const Dashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E8E2D5] pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-serif font-bold text-[#1C1917] tracking-tight">
+              <h2 className="page-title">
                 Craftsman Workbench & Slips
               </h2>
               <Badge variant="brass" size="sm">
@@ -186,7 +185,7 @@ export const Dashboard: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-[#1C1917] uppercase tracking-wider">
+              <h3 className="text-sm font-semibold text-[#1C1917]">
                 My Gold Transaction History
               </h3>
               <p className="text-xs text-[#57534E]">Official slips issued and signed at the workshop counter</p>
@@ -317,17 +316,8 @@ export const Dashboard: React.FC = () => {
       {/* 1. TOP HEADER & QUICK ACTIONS */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E8E2D5] pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-serif font-bold text-[#1C1917] tracking-tight">
-              Workshop Operations & Gold Position
-            </h2>
-            <Badge variant="brass" size="sm">
-              Live Ledger
-            </Badge>
-          </div>
-          <p className="text-xs text-[#57534E] mt-0.5">
-            Real-time multi-purity accounting for Coimbatore workshop, 5 retail showrooms, and ~40 craftsmen.
-          </p>
+          <h2 className="page-title">Workshop stock</h2>
+          <p className="mt-2 text-sm text-charcoal-600">Track gold held in the vault, with karigars, and at the refinery.</p>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -339,10 +329,8 @@ export const Dashboard: React.FC = () => {
           >
             Refresh
           </Button>
-          <Link to="/slips" className="flex-1 sm:flex-initial">
-            <Button variant="primary" size="sm" icon={<FilePlus className="w-3.5 h-3.5" />} className="w-full">
-              New Gold Slip
-            </Button>
+          <Link to="/daily-stock" className="inline-flex min-h-9 items-center rounded-lg bg-brass-600 px-3 text-sm font-medium text-white hover:bg-brass-700">
+            View stock statement
           </Link>
         </div>
       </div>
@@ -417,15 +405,15 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* 4. TOTAL WORKSHOP GOLD CUSTODY DISTRIBUTION BAR */}
-      <div className="bg-white border border-[#E8E2D5] rounded-sm p-4 shadow-subtle space-y-3">
+      <div className="ledger-card p-4 shadow-subtle space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EFEAE0] pb-2">
           <div className="flex items-center gap-2">
             <Scale className="w-4 h-4 text-[#8C5E1E]" />
-            <h3 className="text-xs font-semibold text-[#1C1917] uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-[#1C1917]">
               Total Company Gold Position: <span className="text-[#8C5E1E] font-mono text-sm">{formatWeight(totalWorkshopFine)} Pure Fine</span>
             </h3>
           </div>
-          <div className="flex items-center gap-4 text-xs font-mono text-[#57534E]">
+          <div className="flex items-center flex-wrap gap-4 text-xs tabular-nums text-charcoal-700">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-[#9C6E25]" /> Vault ({formatWeight(centralVaultFine)})
             </span>
@@ -519,7 +507,7 @@ export const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-[#1C1917] uppercase tracking-wider">
+              <h3 className="text-sm font-semibold text-[#1C1917]">
                 Karigars with Outstanding Gold
               </h3>
               <p className="text-xs text-[#57534E]">Live physical gross & fine gold balances on artisan benches</p>
@@ -649,7 +637,7 @@ export const Dashboard: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-[#1C1917] uppercase tracking-wider">
+              <h3 className="text-sm font-semibold text-[#1C1917]">
                 Recent Gold Slips
               </h3>
               <p className="text-xs text-[#57534E]">Live movement at workshop counter</p>
@@ -659,7 +647,7 @@ export const Dashboard: React.FC = () => {
             </Link>
           </div>
 
-          <div className="bg-white border border-[#E8E2D5] rounded-sm p-3 divide-y divide-[#F0EBE0] shadow-subtle max-h-[530px] overflow-y-auto">
+          <div className="ledger-card p-3 divide-y divide-[#F0EBE0] shadow-subtle max-h-[530px] overflow-y-auto">
             {isTransactionsLoading ? (
               <div className="py-8 text-center text-xs text-[#57534E] flex items-center justify-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin text-[#9C6E25]" />
@@ -731,7 +719,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-status-danger" />
-              <h3 className="text-xs font-semibold text-status-danger uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-status-danger">
                 Active Wastage Loss Alerts Requiring Finance Head Audit
               </h3>
             </div>

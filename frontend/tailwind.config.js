@@ -8,22 +8,22 @@ export default {
     extend: {
       colors: {
         parchment: {
-          50: '#FDFBF7',
-          100: '#F9F6F0',
-          200: '#F3EFE6',
-          300: '#EAE4D7',
-          400: '#DDD4C3',
+          50: '#FCFBF8',
+          100: '#F6F5F1',
+          200: '#EEECE6',
+          300: '#E2DFD6',
+          400: '#D2CEC3',
           500: '#CABEAE',
         },
         brass: {
           50: '#FBF8F0',
-          100: '#F5EED8',
+          100: '#F2E9D6',
           200: '#EBDBB0',
           300: '#DFC283',
           400: '#CCA355',
           500: '#B88730', // Antique brass primary
-          600: '#9C6E25',
-          700: '#7D5420',
+          600: '#805B29',
+          700: '#68471D',
           800: '#64421E',
           900: '#4F351B',
         },
@@ -64,7 +64,7 @@ export default {
       fontFamily: {
         sans: ['"Inter"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
         serif: ['"Cinzel"', '"Playfair Display"', 'Georgia', 'serif'],
-        mono: ['"JetBrains Mono"', '"SFMono-Regular"', 'Consolas', '"Liberation Mono"', 'monospace'],
+        mono: ['"Inter"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         'subtle': '0 1px 2px 0 rgba(28, 25, 23, 0.05)',

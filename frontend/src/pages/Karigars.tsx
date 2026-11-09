@@ -94,7 +94,7 @@ export const Karigars: React.FC = () => {
       {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parchment-300 pb-4">
         <div>
-          <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
+          <h2 className="page-title">
             {isKarigar ? 'My Craftsman Gold Ledger' : 'Karigar Directory & Real-time Balance Ledger'}
           </h2>
           <p className="text-xs text-charcoal-600 mt-0.5">

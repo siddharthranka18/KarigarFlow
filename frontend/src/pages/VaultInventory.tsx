@@ -15,7 +15,7 @@ export const VaultInventory: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="border-b border-parchment-300 pb-4">
-        <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
+        <h2 className="page-title">
           Opening Inventory Lots
         </h2>
         <p className="text-xs text-charcoal-600 mt-0.5">

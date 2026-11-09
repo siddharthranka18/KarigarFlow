@@ -6,7 +6,7 @@ export const Table: React.FC<{ children: React.ReactNode; className?: string }> 
   children,
   className,
 }) => (
-  <div className="w-full overflow-x-auto border border-parchment-300 rounded-sm bg-white shadow-subtle">
+  <div className="w-full overflow-x-auto border border-parchment-300 rounded-lg bg-white shadow-subtle">
     <table className={twMerge('w-full text-left border-collapse', className)}>{children}</table>
   </div>
 );
@@ -56,7 +56,7 @@ export const TableHeaderCell: React.FC<{
   <th
     className={twMerge(
       clsx(
-        'px-3.5 py-2.5 text-xs font-semibold text-charcoal-700 uppercase tracking-wider',
+        'px-3.5 py-2.5 text-xs font-semibold text-charcoal-700',
         align === 'right' && 'text-right',
         align === 'center' && 'text-center',
         align === 'left' && 'text-left',

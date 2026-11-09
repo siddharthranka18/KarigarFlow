@@ -17,7 +17,7 @@ export const Badge: React.FC<BadgeProps> = ({
   className,
   icon,
 }) => {
-  const baseStyles = 'inline-flex items-center font-mono font-medium rounded-xs uppercase tracking-wider select-none';
+  const baseStyles = 'inline-flex items-center font-mono font-medium rounded-md select-none';
 
   const variants = {
     default: 'bg-parchment-200 text-charcoal-700 border border-parchment-300',

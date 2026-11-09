@@ -75,14 +75,13 @@ export const Modal: React.FC<ModalProps> = ({
         tabIndex={-1}
         className={twMerge(
           clsx(
-            'relative bg-white border border-parchment-300 rounded-sm shadow-xl w-full z-10 overflow-hidden max-h-[90vh] flex flex-col',
+            'relative bg-white border border-parchment-300 rounded-lg shadow-xl w-full z-10 overflow-hidden max-h-[90vh] flex flex-col',
             maxWidths[maxWidth]
           )
         )}
       >
-        {/* Header with antique brass accent */}
-        <div className="relative border-b border-parchment-300 px-5 py-4 bg-[#FAF7F0] flex items-center justify-between">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-brass-600" />
+
+        <div className="relative border-b border-parchment-300 px-5 py-4 bg-white flex items-center justify-between">
           <div>
             <h3 id={titleId} className="text-base font-semibold text-charcoal-900 tracking-tight">{title}</h3>
             {subtitle && <p className="text-xs text-charcoal-600 mt-0.5">{subtitle}</p>}
@@ -90,7 +89,7 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             aria-label="Close dialog"
             onClick={onClose}
-            className="text-charcoal-400 hover:text-charcoal-700 transition-colors p-1 rounded-sm focus:outline-none"
+            className="text-charcoal-400 hover:text-charcoal-700 transition-colors p-2 rounded-lg hover:bg-parchment-100"
           >
             <X className="w-5 h-5" />
           </button>

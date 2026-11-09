@@ -1,7 +1,8 @@
 GitHub: https://github.com/siddharthranka18/KarigarFlow
 
-Live application: not deployed. Hosting configuration is provided; no live URL
-is claimed. Prepared for the Company A internship core build.
+Live application: https://karigarflow-demo.onrender.com/
+
+Prepared for the Company A internship core build.
 
 # KarigarFlow technical design
 
@@ -129,13 +130,16 @@ separate from approved write-offs. Tamil cards make own slips and balances
 readable on phones, with an English toggle. Inputs have associated labels and
 dialogs have focus management, keyboard dismissal and accessible names.
 
-Validation on 7 November 2026: 67 backend tests and four production-build browser
-flows passed locally. The frontend production build passed. npm audit reported
-zero known vulnerabilities after updating affected packages. The GitHub
-repository was verified PUBLIC. GitHub Checks for implementation commit 5265aba
-also passed on Linux, including backend/browser checks and Docker image build:
-https://github.com/siddharthranka18/KarigarFlow/actions/runs/42276478796
-This verifies the build, not a live hosted deployment.
+Validation on 7 November 2026: 70 backend tests and four production-build browser
+flows passed. The frontend production build passed. npm audit reported zero known
+vulnerabilities after updating affected packages. The repository was verified
+PUBLIC. GitHub Checks for commit dbd3734 passed on Linux, including backend/browser
+checks, Docker build, container startup, migrations and a health check against an
+empty database using a hosted-style connection URL:
+https://github.com/siddharthranka18/KarigarFlow/actions/runs/42346037070
+The live Render app returned HTTP 200 and /api/health reported healthy with the
+database connected. The author also confirmed opening and checking the live app.
+These checks do not replace workshop acceptance testing.
 
 Backend regression tests cover rounding, sample fidelity, custody conservation,
 atomicity, retries, competing requests, job limits, agreement snapshots, privacy,
@@ -177,8 +181,8 @@ from compilation. A synthetic OCR test is not a workshop-photo accuracy study.
 - A13: Client ROI figures and targets are assumptions, not measured savings.
 - A14: Hosting, upload retention/quotas, proxy body limits, backups,
   distributed throttling and real-client hardening require deployment validation.
-  The local Docker daemon was unavailable; the image build passed in GitHub CI.
-  Hosted runtime acceptance is still distinct from build validation.
+  The local Docker daemon was unavailable; Docker build and startup passed in CI.
+  Hosted app and database health were checked; real-client acceptance remains.
 
 ## What was cut and what comes next
 
@@ -186,5 +190,5 @@ Optional old-gold/billing integration and Tally-specific output were cut to keep
 the core reliable. CSV is a stock statement, not a claim of Tally compatibility.
 Next: client acceptance of allowance/write-off policies, workshop photo trials,
 native Tamil review, period snapshots, explicit refinery transfers, job closure
-and production operations. Deploy and test the hosted reviewer URL before
-submitting; preserve the public repository and commit history through review.
+and production operations. Keep the hosted reviewer demo available and preserve
+the public repository and commit history through review.

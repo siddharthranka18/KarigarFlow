@@ -2,9 +2,11 @@
 
 Repository: https://github.com/siddharthranka18/KarigarFlow
 
-Live app: not deployed yet. The repository includes a Docker image definition
-and Render Blueprint; a hosting account must be connected before there is a
-reviewer URL. Local production-style serving is tested separately from Docker.
+Live app: https://karigarflow-demo.onrender.com/
+
+Deployed on Render using the repository Dockerfile and Blueprint, with managed
+PostgreSQL. On 7 November 2026, the app returned HTTP 200 and /api/health reported
+healthy with the database connected. Use the demo accounts below to sign in.
 
 ## Run locally on Windows
 
@@ -130,16 +132,17 @@ PostgreSQL, not the web container's temporary filesystem.
 Connect this GitHub repository in Render and create a Blueprint from render.yaml.
 Review the resource plan before creation. The Blueprint requests a free demo web
 service and free PostgreSQL, generates the signing secret and wires the database.
-Once deployment is healthy, test every demo role and update the live URL at the
-top of this file and in the TDD before submitting.
+The current reviewer URL is listed at the top of this guide and the TDD.
+For a new deployment, check /api/health and sign in with each demo role.
 
 Render's free web service sleeps after inactivity and free PostgreSQL expires
 30 days after creation. Arrange a review window or a persistent plan before
 relying on it. See https://render.com/docs/free. No paid resource is created by
 the local implementation. The Docker daemon was unavailable during local QA;
-the image built successfully in GitHub CI for implementation commit 5265aba:
-https://github.com/siddharthranka18/KarigarFlow/actions/runs/42276478796.
-This is build validation, not verification of a live hosted runtime.
+the image built and started successfully in GitHub CI for commit dbd3734:
+https://github.com/siddharthranka18/KarigarFlow/actions/runs/42346037070
+CI also applied migrations and checked backend health. Live app and database
+health were checked separately at the reviewer URL.
 
 ## Environment variables (names only)
 

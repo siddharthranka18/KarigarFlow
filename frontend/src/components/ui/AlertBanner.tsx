@@ -45,7 +45,7 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
     <div
       className={twMerge(
         clsx(
-          'border rounded-sm p-3.5 flex items-start gap-3 shadow-subtle',
+          'border rounded-lg p-3.5 flex items-start gap-3 shadow-subtle',
           current.container,
           className
         )

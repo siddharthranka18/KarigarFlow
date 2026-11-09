@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/Table';
@@ -19,7 +20,8 @@ export const Transactions: React.FC = () => {
   const queryClient = useQueryClient();
   const { isKarigar, isFinanceHead, user } = useAuth();
   const [filterType, setFilterType] = useState<string>('ALL');
-  const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);
+  const { state } = useLocation();
+  const [isSlipModalOpen, setIsSlipModalOpen] = useState(Boolean(state?.newSlip));
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const submission = useRef<{ fingerprint: string; key: string } | null>(null);
 
@@ -207,7 +209,7 @@ export const Transactions: React.FC = () => {
       {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parchment-300 pb-4">
         <div>
-          <h2 className="text-xl font-serif font-bold text-charcoal-900 tracking-tight">
+          <h2 className="page-title">
             Gold Issue & Receipt Slips Register
           </h2>
           <p className="text-xs text-charcoal-600 mt-0.5">
@@ -349,8 +351,8 @@ export const Transactions: React.FC = () => {
       <Modal
         isOpen={isSlipModalOpen}
         onClose={() => { if (!readingPhoto && !createMutation.isPending) setIsSlipModalOpen(false); }}
-        title="Record Gold Issue / Receipt Slip"
-        subtitle="Precision workshop slip generation. Automatic fine-gold & wastage tolerance auditing."
+        title="Record a gold slip"
+        subtitle="Enter the job and verify the weight before saving."
         maxWidth="xl"
       >
         {formError && <AlertBanner type="danger" message={formError} />}
@@ -368,15 +370,13 @@ export const Transactions: React.FC = () => {
           {!online && <AlertBanner type="warning" message="Offline draft. Reconnect before submitting; your fields are saved on this device." />}
           {draftNotice && <AlertBanner type="info" message={draftNotice} />}
           {needsPhoto && <Button type="button" variant="secondary" onClick={() => { setNeedsPhoto(false); setScaleReading(null); setScaleReadingConfirmed(false); }}>Remove recovered photo and use manual entry</Button>}
-          <ScalePhoto reading={scaleReading} onBusy={setReadingPhoto}
-            onReading={value => { setNeedsPhoto(false); setScaleReading(value); setScaleReadingConfirmed(false); }}
-            onValues={(weight, purity) => { setGrossWeight(weight); if (purity) setPurityPercent(purity); }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-charcoal-700 uppercase tracking-wider mb-1.5">
-                Slip Type *
+              <label htmlFor="slip-type" className="block text-xs font-medium text-charcoal-700 mb-1.5">
+                Slip type *
               </label>
               <select
+                id="slip-type"
                 value={slipType}
                 onChange={(e) => setSlipType(e.target.value as TransactionType)}
                 className="w-full bg-white border border-parchment-300 text-xs text-charcoal-900 rounded-sm px-3 py-2 focus:outline-none focus:border-brass-600"
@@ -389,10 +389,11 @@ export const Transactions: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-charcoal-700 uppercase tracking-wider mb-1.5">
-                Select Karigar *
+              <label htmlFor="slip-karigar" className="block text-xs font-medium text-charcoal-700 mb-1.5">
+                Karigar *
               </label>
               <select
+                id="slip-karigar"
                 required
                 value={karigarId}
                 onChange={(e) => {
@@ -404,7 +405,7 @@ export const Transactions: React.FC = () => {
                 }}
                 className="w-full bg-white border border-parchment-300 text-xs text-charcoal-900 rounded-sm px-3 py-2 focus:outline-none focus:border-brass-600"
               >
-                <option value="">-- Choose Craftsman --</option>
+                <option value="">Choose a karigar</option>
                 {karigars?.map((k) => (
                   <option key={k.id} value={k.id}>
                     {k.karigar_code} - {k.name}
@@ -428,6 +429,9 @@ export const Transactions: React.FC = () => {
             onChange={(e) => setItemDescription(e.target.value)}
           />
 
+          <ScalePhoto reading={scaleReading} onBusy={setReadingPhoto}
+            onReading={value => { setNeedsPhoto(false); setScaleReading(value); setScaleReadingConfirmed(false); }}
+            onValues={(weight, purity) => { setGrossWeight(weight); if (purity) setPurityPercent(purity); }} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
               label="Gross Weight"
@@ -465,7 +469,7 @@ export const Transactions: React.FC = () => {
           {/* Receipt specific wastage calculation fields */}
           {slipType === 'RECEIPT_ORNAMENT' && (
             <div className="p-3 bg-parchment-100 border border-parchment-300 rounded-sm space-y-3">
-              <div className="text-xs font-semibold text-charcoal-800 uppercase tracking-wider">
+              <div className="text-xs font-semibold text-charcoal-800">
                 Wastage & Loss Verification
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -495,7 +499,7 @@ export const Transactions: React.FC = () => {
           {/* Live Calculated Fine Gold Summary Box */}
           <div className="p-3 bg-brass-50/60 border border-brass-200 rounded-sm flex items-center justify-between">
             <div>
-              <div className="text-[10px] font-mono uppercase text-brass-800 font-semibold">
+              <div className="text-[10px] font-medium text-brass-800 font-semibold">
                 Fine Gold Preview — verified by server on save
               </div>
               <div className="text-xs text-charcoal-600 mt-0.5">
@@ -537,7 +541,7 @@ export const Transactions: React.FC = () => {
             onChange={(e) => setNotes(e.target.value)}
           />
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-parchment-200">
+          <div className="sticky bottom-0 z-10 -mx-5 -mb-5 flex flex-wrap justify-end gap-2 border-t border-parchment-300 bg-white px-5 py-3">
             <Button variant="ghost" size="sm" type="button" disabled={readingPhoto} onClick={() => { resetForm(); setDraftNotice('Draft cleared.'); }}>Clear draft</Button>
             <Button variant="ghost" size="sm" type="button" disabled={readingPhoto} onClick={() => setIsSlipModalOpen(false)}>
               Cancel

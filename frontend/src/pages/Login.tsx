@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { signInDestination } from '../features/auth/routeAccess';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { AlertBanner } from '../components/ui/AlertBanner';
-import { Building2, ShieldCheck, KeyRound, Sparkles } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Scale, Sparkles } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('finance@karigarflow.com');
-  const [password, setPassword] = useState('Finance@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,6 +32,11 @@ export const Login: React.FC = () => {
       });
 
       if (!res.ok) {
+        if (res.status >= 500) {
+          throw new Error(import.meta.env.DEV
+            ? 'The local backend is unavailable. Check the FastAPI server on port 8000 and its terminal, then retry.'
+            : 'The workshop service is temporarily unavailable. Try again in a moment.');
+        }
         const data = await res.json().catch(() => ({ detail: 'Authentication failed' }));
         throw new Error(data.detail || 'Invalid email or password');
       }
@@ -44,7 +50,7 @@ export const Login: React.FC = () => {
         is_active: true,
         created_at: new Date().toISOString(),
       });
-      navigate(from, { replace: true });
+      navigate(signInDestination(from, data.role), { replace: true });
     } catch (err: any) {
       setError(err.message || 'Login error occurred');
     } finally {
@@ -59,26 +65,31 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-parchment-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Brand header */}
-        <div className="flex justify-center mb-3">
-          <div className="w-12 h-12 rounded-xs bg-brass-600 text-white flex items-center justify-center font-serif font-bold text-2xl shadow-brass">
-            K
-          </div>
+    <div className="grid min-h-screen lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <aside className="flex flex-col justify-between gap-8 bg-brass-100 px-6 py-7 sm:px-12 lg:px-14 lg:py-12">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-lg bg-brass-800 font-serif text-xl font-bold text-white">K</span>
+          <span className="font-serif text-lg font-bold">KarigarFlow</span>
         </div>
-        <h2 className="text-center text-2xl font-serif font-bold text-charcoal-900 tracking-tight">
-          KarigarFlow ERP
-        </h2>
-        <p className="mt-1 text-center text-xs font-mono uppercase tracking-widest text-brass-700">
-          Coimbatore Jewellery Workshop & Gold Vault
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-subtle border border-parchment-300 rounded-sm sm:px-10 relative">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-brass-600" />
-
+        <div className="hidden max-w-md lg:block">
+          <h1 className="text-5xl font-semibold leading-[1.08] tracking-tight">The workshop<br />gold ledger</h1>
+          <p className="mt-5 max-w-sm text-base leading-relaxed text-charcoal-700">Follow gold from issue to return, with measured weights and a record of who handled each slip.</p>
+          <dl className="mt-10 divide-y divide-brass-200 border-y border-brass-200 text-sm">
+            <div className="flex items-center gap-3 py-4"><ArrowUpRight size={18} aria-hidden="true" /><dt>Issue to karigar</dt><dd className="ml-auto font-semibold tabular-nums">109.920 g</dd></div>
+            <div className="flex items-center gap-3 py-4"><ArrowDownLeft size={18} aria-hidden="true" /><dt>Fine gold returned</dt><dd className="ml-auto font-semibold tabular-nums">106.027 g</dd></div>
+            <div className="flex items-center gap-3 py-4"><Scale size={18} aria-hidden="true" /><dt>Fine gold outstanding</dt><dd className="ml-auto font-semibold tabular-nums">3.893 g</dd></div>
+          </dl>
+          <p className="mt-3 text-xs text-charcoal-700">Sample ledger · Murugesan S · fine gold</p>
+        </div>
+        <p className="hidden text-sm text-charcoal-700 lg:block">Coimbatore workshop</p>
+      </aside>
+      <main className="flex items-start justify-center px-5 py-12 sm:items-center lg:py-16">
+        <div className="w-full max-w-md">
+          <div className="mb-6">
+            <h2 className="page-title">Sign in</h2>
+            <p className="mt-2 text-sm text-charcoal-600">Open your workshop account.</p>
+          </div>
+          <div className="ledger-card p-5 sm:p-8">
           {error && (
             <div className="mb-5">
               <AlertBanner type="danger" message={error} />
@@ -89,15 +100,17 @@ export const Login: React.FC = () => {
             <Input
               label="Staff Email"
               type="email"
+              autoComplete="username"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. finance@karigarflow.com"
+              placeholder="name@example.com"
             />
 
             <Input
               label="Password"
               type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -110,7 +123,6 @@ export const Login: React.FC = () => {
               className="w-full mt-2"
               size="md"
               isLoading={isLoading}
-              icon={<KeyRound className="w-4 h-4" />}
             >
               Sign In to Workshop Ledger
             </Button>
@@ -170,20 +182,8 @@ export const Login: React.FC = () => {
           )}
         </div>
 
-        {/* Security & Workshop context footer */}
-        <div className="mt-4 flex items-center justify-center gap-4 text-xs text-charcoal-500">
-          <div className="flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-brass-600" />
-            <span>Decimal-Safe Gold Accounting</span>
-          </div>
-          <span>•</span>
-          <div className="flex items-center gap-1">
-            <Building2 className="w-3.5 h-3.5 text-brass-600" />
-            <span>Coimbatore Workshop Network</span>
-          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
-

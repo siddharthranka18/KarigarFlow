@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './features/auth/AuthContext';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
+import { restrictedRoutes } from './features/auth/routeAccess';
 import { MainLayout } from './layouts/MainLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -54,9 +55,9 @@ export const App: React.FC = () => {
               <Route path="karigars" element={<Karigars />} />
               <Route path="slips" element={<Slips />} />
               <Route path="transactions" element={<Navigate to="/slips" replace />} />
-              <Route path="daily-stock" element={<ProtectedRoute allowedRoles={['owner']}><DailyStock /></ProtectedRoute>} />
-              <Route path="loss-alerts" element={<ProtectedRoute allowedRoles={['owner', 'finance_head']}><LossAlerts /></ProtectedRoute>} />
-              <Route path="inventory" element={<ProtectedRoute allowedRoles={['owner']}><VaultInventory /></ProtectedRoute>} />
+              <Route path="daily-stock" element={<ProtectedRoute allowedRoles={restrictedRoutes['/daily-stock']}><DailyStock /></ProtectedRoute>} />
+              <Route path="loss-alerts" element={<ProtectedRoute allowedRoles={restrictedRoutes['/loss-alerts']}><LossAlerts /></ProtectedRoute>} />
+              <Route path="inventory" element={<ProtectedRoute allowedRoles={restrictedRoutes['/inventory']}><VaultInventory /></ProtectedRoute>} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
